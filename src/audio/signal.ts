@@ -61,8 +61,16 @@ export function refinePitchCandidate(
   const candidateNearRange = Number.isFinite(candidate)
     && candidate >= LIGHT_MIN_HZ / boundaryRatio
     && candidate <= LIGHT_MAX_HZ * boundaryRatio;
-  if (!candidateNearRange || confidence < 0.75) return { frequencyHz: null, confidence };
   const [refined, clarity] = detector.findPitch(frame, sampleRate);
+  const dspFallback = Number.isFinite(refined)
+    && refined >= minimumDisplayHz
+    && refined <= maximumDisplayHz
+    && clarity >= 0.9;
+  if (!candidateNearRange || confidence < 0.75) {
+    return dspFallback
+      ? { frequencyHz: refined, confidence: clarity }
+      : { frequencyHz: null, confidence };
+  }
   const distanceCents = Number.isFinite(refined) && refined > 0
     ? Math.abs(1200 * Math.log2(refined / candidate))
     : Infinity;

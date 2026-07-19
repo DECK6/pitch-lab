@@ -34,4 +34,15 @@ describe('Neural-guided frequency refinement', () => {
     const result = refinePitchCandidate(harmonicFrame(220), 16_000, candidate, 0.99, detector);
     expect(result.frequencyHz).toBe(candidate);
   });
+
+  it('uses a clear DSP estimate when Neural confidence is too low for a low note', () => {
+    const result = refinePitchCandidate(harmonicFrame(135.2), 16_000, 0, 0.2, detector);
+    expect(result.frequencyHz).not.toBeNull();
+    expect(Math.abs(centsBetween(result.frequencyHz ?? 1, 135.2) ?? 100)).toBeLessThan(5);
+    expect(result.confidence).toBeGreaterThanOrEqual(0.9);
+  });
+
+  it('does not invent a DSP fallback from silence', () => {
+    expect(refinePitchCandidate(new Float32Array(LIGHT_FRAME_SIZE), 16_000, 0, 0, detector).frequencyHz).toBeNull();
+  });
 });

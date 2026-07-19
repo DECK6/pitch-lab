@@ -1,8 +1,62 @@
-import { frequencyToMidi } from '../music/pitch-math';
+import { frequencyToNote } from '../music/pitch-math';
 
-interface TrailPoint {
+export interface TrailPoint {
   time: number;
   midi: number | null;
+  cents: number | null;
+  breakBefore: boolean;
+}
+
+interface PlotPoint {
+  x: number;
+  y: number;
+}
+
+export interface TrailPlot {
+  segments: PlotPoint[][];
+  marker: PlotPoint | null;
+}
+
+export function makeTrailPoint(time: number, frequencyHz: number | null, breakBefore = false): TrailPoint {
+  const note = frequencyHz === null ? null : frequencyToNote(frequencyHz);
+  return {
+    time,
+    midi: note?.midi ?? null,
+    cents: note?.cents ?? null,
+    breakBefore,
+  };
+}
+
+export function projectTrail(points: TrailPoint[], now: number, width: number, height: number): TrailPlot {
+  const segments: PlotPoint[][] = [];
+  let segment: PlotPoint[] = [];
+  let previous: TrailPoint | null = null;
+  let marker: PlotPoint | null = null;
+
+  for (const point of points) {
+    if (point.midi === null || point.cents === null) {
+      segment = [];
+      previous = null;
+      continue;
+    }
+    const x = width - (now - point.time) / 4000 * width;
+    const y = height - (Math.max(-50, Math.min(50, point.cents)) + 50) / 100 * height;
+    const shouldBreak = point.breakBefore
+      || previous === null
+      || previous.midi !== point.midi
+      || point.time - previous.time > 250
+      || (previous.cents !== null && Math.abs(point.cents - previous.cents) > 35);
+    if (shouldBreak) {
+      segment = [];
+      segments.push(segment);
+    }
+    const plotted = { x, y };
+    segment.push(plotted);
+    marker = plotted;
+    previous = point;
+  }
+
+  return { segments, marker };
 }
 
 export class PitchTrail {
@@ -15,9 +69,7 @@ export class PitchTrail {
   }
 
   push(time: number, frequencyHz: number | null, discontinuity = false): void {
-    if (discontinuity) this.points.length = 0;
-    const midi = frequencyHz === null ? null : frequencyToMidi(frequencyHz);
-    this.points.push({ time, midi });
+    this.points.push(makeTrailPoint(time, frequencyHz, discontinuity));
     while (this.points[0] && time - this.points[0].time > 4000) this.points.shift();
     this.scheduleDraw();
   }
@@ -58,44 +110,29 @@ export class PitchTrail {
     }
     if (this.points.length < 2) return;
     const now = this.points[this.points.length - 1]?.time ?? 0;
-    const midis = this.points.flatMap(({ midi }) => midi === null ? [] : [midi]);
-    if (midis.length < 2) return;
-    const center = midis.reduce((sum, midi) => sum + midi, 0) / midis.length;
-    const min = center - 1;
-    const max = center + 1;
+    const plot = projectTrail(this.points, now, width, height);
     context.strokeStyle = '#3477ad';
     context.lineWidth = 2.5;
     context.lineJoin = 'round';
     context.beginPath();
-    let drawing = false;
-    this.points.forEach((point) => {
-      if (point.midi === null) {
-        drawing = false;
-        return;
-      }
-      const x = width - (now - point.time) / 4000 * width;
-      const y = height - ((point.midi - min) / (max - min)) * height;
-      if (!drawing) context.moveTo(x, y);
-      else context.lineTo(x, y);
-      drawing = true;
-    });
-    context.stroke();
-    let last: TrailPoint | undefined;
-    for (let index = this.points.length - 1; index >= 0; index -= 1) {
-      if (this.points[index]?.midi !== null) {
-        last = this.points[index];
-        break;
-      }
+    for (const segment of plot.segments) {
+      const [first, ...rest] = segment;
+      if (!first || rest.length === 0) continue;
+      context.moveTo(first.x, first.y);
+      for (const point of rest) context.lineTo(point.x, point.y);
     }
-    if (last?.midi !== null && last?.midi !== undefined) {
-      const y = height - ((last.midi - min) / (max - min)) * height;
-      const x = width - (now - last.time) / 4000 * width;
-      if (x >= 0) {
-        context.fillStyle = '#f45128';
-        context.beginPath();
-        context.arc(Math.min(width - 4, x), y, 5, 0, Math.PI * 2);
-        context.fill();
-      }
+    context.stroke();
+    if (plot.marker && plot.marker.x >= 0) {
+      context.fillStyle = '#f45128';
+      context.beginPath();
+      context.arc(
+        Math.max(5, Math.min(width - 5, plot.marker.x)),
+        Math.max(5, Math.min(height - 5, plot.marker.y)),
+        5,
+        0,
+        Math.PI * 2,
+      );
+      context.fill();
     }
   }
 }

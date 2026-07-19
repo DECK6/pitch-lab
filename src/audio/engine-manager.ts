@@ -16,10 +16,11 @@ interface PendingPacket {
   recycle: (buffer: ArrayBuffer) => void;
 }
 
+const MAX_PENDING_SAMPLES = 16_384;
+
 class WorkerChannel {
   private inFlight: PendingPacket | null = null;
   private pending: PendingPacket | null = null;
-  private dropped = 0;
 
   constructor(
     readonly source: EngineSource,
@@ -41,8 +42,8 @@ class WorkerChannel {
       return;
     }
     if (this.pending) {
-      this.pending.recycle(this.pending.packet.buffer);
-      this.dropped += 1 + this.pending.packet.droppedSinceLast;
+      this.pending = this.mergePending(this.pending, value);
+      return;
     }
     this.pending = value;
   }
@@ -80,14 +81,41 @@ class WorkerChannel {
     const current = this.inFlight;
     this.inFlight = null;
     current?.recycle(message.buffer);
-    const dropped = this.dropped + (current?.packet.droppedSinceLast ?? 0);
-    this.dropped = 0;
+    const dropped = current?.packet.droppedSinceLast ?? 0;
     this.onResult(message.result, dropped);
     if (this.pending) {
       const next = this.pending;
       this.pending = null;
       this.dispatch(next);
     }
+  }
+
+  private mergePending(previous: PendingPacket, next: PendingPacket): PendingPacket {
+    const previousSamples = new Float32Array(previous.packet.buffer);
+    const nextSamples = new Float32Array(next.packet.buffer);
+    const totalSamples = previousSamples.length + nextSamples.length;
+    const keptSamples = Math.min(MAX_PENDING_SAMPLES, totalSamples);
+    const omittedSamples = totalSamples - keptSamples;
+    const combined = new Float32Array(keptSamples);
+    const previousStart = Math.min(previousSamples.length, omittedSamples);
+    const keptPrevious = previousSamples.subarray(previousStart);
+    combined.set(keptPrevious, 0);
+    const nextStart = Math.max(0, omittedSamples - previousSamples.length);
+    combined.set(nextSamples.subarray(nextStart), keptPrevious.length);
+    previous.recycle(previous.packet.buffer);
+    next.recycle(next.packet.buffer);
+    return {
+      packet: {
+        type: 'pcm',
+        buffer: combined.buffer,
+        audioTimeMs: next.packet.audioTimeMs,
+        sampleRate: next.packet.sampleRate,
+        droppedSinceLast: previous.packet.droppedSinceLast
+          + next.packet.droppedSinceLast
+          + Math.ceil(omittedSamples / Math.max(1, nextSamples.length)),
+      },
+      recycle: () => undefined,
+    };
   }
 }
 
@@ -193,7 +221,10 @@ export class EngineManager {
       return;
     }
     this.sequence += 1;
-    const discontinuity = this.discontinuity || dropped > 0;
+    // Queue backpressure can skip capture hops on slower devices without
+    // breaking the audio stream. Treat only explicit route/engine changes as
+    // hard discontinuities; otherwise Neural would reset on every result.
+    const discontinuity = this.discontinuity;
     const frame = this.smoother.push(result, {
       sessionId: this.sessionId,
       sequence: this.sequence,

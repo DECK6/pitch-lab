@@ -19,6 +19,15 @@ const stateLabels: Record<AudioSessionState, string> = {
   error: 'MIC ERROR',
 };
 
+export function meterNeedleEndpoint(cents: number): { x: number; y: number } {
+  const clamped = Math.max(-50, Math.min(50, cents));
+  const radians = clamped * 1.55 * Math.PI / 180;
+  return {
+    x: 200 + Math.sin(radians) * 110,
+    y: 158 - Math.cos(radians) * 110,
+  };
+}
+
 export class App {
   private readonly session: AudioSession;
   private readonly tone: ReferenceTone;
@@ -109,7 +118,7 @@ export class App {
     const tuning = Math.abs(cents) <= 5 ? 'IN TUNE' : cents < 0 ? 'FLAT' : 'SHARP';
     this.setText('tuning-state', tuning);
     this.setText('signal-state', 'STABLE PITCH');
-    this.get<SVGLineElement>('meter-needle').setAttribute('transform', `rotate(${cents * 1.55} 200 158)`);
+    this.setMeterNeedle(cents);
     this.root.classList.toggle('is-in-tune', tuning === 'IN TUNE');
     this.trail.push(frame.timestampMs, frame.frequencyHz, frame.discontinuity);
   }
@@ -120,7 +129,7 @@ export class App {
     this.setText('frequency-value', '— Hz');
     this.setText('cents-value', '— cent');
     this.setText('tuning-state', reason);
-    this.get<SVGLineElement>('meter-needle').setAttribute('transform', 'rotate(0 200 158)');
+    this.setMeterNeedle(0);
     this.root.classList.remove('is-in-tune');
     if (clearTrail && performance.now() - this.lastFrameAt > 300) this.trail?.clear();
   }
@@ -155,6 +164,14 @@ export class App {
 
   private announce(message: string): void {
     this.setText('app-message', message);
+  }
+
+  private setMeterNeedle(cents: number): void {
+    const needle = this.get<SVGLineElement>('meter-needle');
+    const endpoint = meterNeedleEndpoint(cents);
+    needle.removeAttribute('transform');
+    needle.setAttribute('x2', endpoint.x.toFixed(2));
+    needle.setAttribute('y2', endpoint.y.toFixed(2));
   }
 
   private setText(id: string, value: string): void {

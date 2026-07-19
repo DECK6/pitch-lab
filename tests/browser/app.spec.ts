@@ -90,6 +90,26 @@ test('mobile keyboard scrolls horizontally when swiping across keys', async ({ p
 test('detects fake A4 in Light and loads the real Neural engine on demand', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'desktop-chromium');
   test.setTimeout(60_000);
+  await page.addInitScript(() => {
+    const NativeWorker = window.Worker;
+    window.Worker = class extends NativeWorker {
+      override get onmessage(): ((this: Worker, event: MessageEvent) => unknown) | null {
+        return null;
+      }
+
+      override set onmessage(listener: ((this: Worker, event: MessageEvent) => unknown) | null) {
+        if (!listener) return;
+        this.addEventListener('message', (event) => {
+          const result = (event.data as { type?: string; result?: { source?: string } } | null)?.result;
+          if (event.data?.type === 'processed' && result?.source === 'neural') {
+            setTimeout(() => listener.call(this, event), 90);
+          } else {
+            listener.call(this, event);
+          }
+        });
+      }
+    };
+  });
   const neuralRequests: string[] = [];
   page.on('request', (request) => {
     if (/onnx|ort-wasm|neural-worker|ai-manifest/i.test(request.url())) neuralRequests.push(request.url());
@@ -116,7 +136,7 @@ test('detects fake A4 in Light and loads the real Neural engine on demand', asyn
   expect(neuralRequests.some((url) => url.includes('.onnx'))).toBe(true);
   expect(neuralRequests.some((url) => url.includes('.wasm'))).toBe(true);
   await expect(page.locator('#note-name')).toHaveText('A', { timeout: 10_000 });
-  expect(Number((await page.locator('#cents-value').textContent())?.match(/\d+/)?.[0] ?? 99)).toBeLessThanOrEqual(5);
+  await expect.poll(async () => Number((await page.locator('#cents-value').textContent())?.match(/\d+/)?.[0] ?? 99), { timeout: 10_000 }).toBeLessThanOrEqual(5);
 
   const loadedRequestCount = neuralRequests.length;
   await page.getByRole('button', { name: /LIGHT DSP/ }).click();
@@ -125,6 +145,56 @@ test('detects fake A4 in Light and loads the real Neural engine on demand', asyn
   await expect(page.getByRole('button', { name: /NEURAL/ })).toHaveClass(/is-selected/);
   await expect(page.locator('#note-name')).toHaveText('A', { timeout: 10_000 });
   expect(neuralRequests).toHaveLength(loadedRequestCount);
+});
+
+test('Neural keeps detecting a low C-sharp when model confidence is weak', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop-chromium');
+  test.setTimeout(60_000);
+  await page.addInitScript(() => {
+    const NativeWorker = window.Worker;
+    window.Worker = class extends NativeWorker {
+      override get onmessage(): ((this: Worker, event: MessageEvent) => unknown) | null {
+        return null;
+      }
+
+      override set onmessage(listener: ((this: Worker, event: MessageEvent) => unknown) | null) {
+        if (!listener) return;
+        this.addEventListener('message', (event) => {
+          const result = (event.data as { type?: string; result?: { source?: string } } | null)?.result;
+          if (event.data?.type === 'processed' && result?.source === 'neural') {
+            setTimeout(() => listener.call(this, event), 90);
+          } else {
+            listener.call(this, event);
+          }
+        });
+      }
+    };
+    Object.defineProperty(navigator, 'mediaDevices', {
+      configurable: true,
+      value: {
+        getUserMedia: async () => {
+          const context = new AudioContext();
+          const oscillator = context.createOscillator();
+          const gain = context.createGain();
+          const destination = context.createMediaStreamDestination();
+          oscillator.frequency.value = 135.2;
+          gain.gain.value = 0.25;
+          oscillator.connect(gain).connect(destination);
+          oscillator.start();
+          Object.assign(window, { __pitchLabLowSource: { context, oscillator } });
+          return destination.stream;
+        },
+      },
+    });
+  });
+  await page.goto('/');
+  await page.getByRole('button', { name: /MIC START/ }).click();
+  await expect(page.locator('#note-name')).toHaveText('C♯', { timeout: 10_000 });
+  await page.getByRole('button', { name: /NEURAL/ }).click();
+  await expect(page.locator('#neural-stage')).toContainText(/READY/, { timeout: 40_000 });
+  await expect(page.locator('#note-name')).toHaveText('C♯', { timeout: 10_000 });
+  await expect(page.locator('#frequency-value')).toContainText('135.2');
+  await expect(page.locator('#confidence-value')).not.toHaveText('NONE');
 });
 
 test('cancelling Neural loading keeps Light live', async ({ page }, testInfo) => {

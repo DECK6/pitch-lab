@@ -28,6 +28,8 @@ let resampler: StreamingSincResampler | null = null;
 let rolling = new Float32Array(4096);
 let rollingFilled = 0;
 let samplesSinceInference = 0;
+let heldFrequencyHz: number | null = null;
+let heldConfidence = 0;
 let loadAbort: AbortController | null = null;
 let cancelled = false;
 const refinementDetector = PitchDetector.forFloat32Array(4096);
@@ -126,6 +128,8 @@ async function loadNeural(sampleRate: number, manifestUrl: string): Promise<void
   rolling = new Float32Array(4096);
   rollingFilled = 0;
   samplesSinceInference = 0;
+  heldFrequencyHz = null;
+  heldConfidence = 0;
   post({ type: 'ready', source: 'neural', warmupMs: performance.now() - started });
 }
 
@@ -160,6 +164,8 @@ async function processPcm(message: Extract<EngineWorkerInput, { type: 'pcm' }>):
     const converted = resampler.push(source);
     appendRolling(converted);
     samplesSinceInference += converted.length;
+    frequencyHz = heldFrequencyHz;
+    confidence = heldConfidence;
     if (rollingFilled === rolling.length && samplesSinceInference >= 512) {
       samplesSinceInference %= 512;
       const outputs = await session.run({ input_audio: new ort.Tensor('float32', rolling.slice(), [1, rolling.length]) });
@@ -172,6 +178,8 @@ async function processPcm(message: Extract<EngineWorkerInput, { type: 'pcm' }>):
       const refined = refinePitchCandidate(rolling, 16_000, candidate, confidence, refinementDetector);
       frequencyHz = refined.frequencyHz;
       confidence = refined.confidence;
+      heldFrequencyHz = frequencyHz;
+      heldConfidence = confidence;
       outputs.pitch_hz?.dispose();
       outputs.confidence?.dispose();
     }
