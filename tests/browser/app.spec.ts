@@ -148,7 +148,7 @@ test('detects fake A4 in Light and loads the real Neural engine on demand', asyn
 });
 
 test('Neural keeps detecting a low C-sharp when model confidence is weak', async ({ page }, testInfo) => {
-  test.skip(testInfo.project.name !== 'desktop-chromium');
+  test.skip(!['desktop-chromium', 'mobile-webkit'].includes(testInfo.project.name));
   test.setTimeout(60_000);
   await page.addInitScript(() => {
     const NativeWorker = window.Worker;

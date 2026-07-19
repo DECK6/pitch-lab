@@ -1,4 +1,5 @@
 /// <reference lib="webworker" />
+import * as ortRuntime from 'onnxruntime-web/wasm';
 import { PitchDetector } from 'pitchy';
 import { StreamingSincResampler } from './resample';
 import { clippingRatio, refinePitchCandidate, rmsDb } from './signal';
@@ -22,8 +23,8 @@ interface AiManifest {
 }
 
 const scope = self as DedicatedWorkerGlobalScope;
-let session: import('onnxruntime-web/wasm').InferenceSession | null = null;
-let ort: typeof import('onnxruntime-web/wasm') | null = null;
+let session: ortRuntime.InferenceSession | null = null;
+let ort: typeof ortRuntime | null = null;
 let resampler: StreamingSincResampler | null = null;
 let rolling = new Float32Array(4096);
 let rollingFilled = 0;
@@ -99,7 +100,7 @@ async function loadNeural(sampleRate: number, manifestUrl: string): Promise<void
   if (cancelled) throw new DOMException('Cancelled', 'AbortError');
 
   post({ type: 'progress', stage: 'engine_code', loaded: 0, total: 1, elapsedMs: performance.now() - started });
-  ort = await import('onnxruntime-web/wasm');
+  ort = ortRuntime;
   post({ type: 'progress', stage: 'engine_code', loaded: 1, total: 1, elapsedMs: performance.now() - started });
   ort.env.wasm.numThreads = 1;
   ort.env.wasm.proxy = false;
