@@ -87,4 +87,18 @@ describe('mobile pitch display regressions', () => {
     expect(noteChange?.cents).toBe(20);
     expect(noteChange?.breakBefore).toBe(true);
   });
+
+  it('plots a chromatic glide as one continuous rising contour', () => {
+    const points = Array.from({ length: 9 }, (_, index) => {
+      const midiFloat = 49 + index * 0.25;
+      const frequency = 440 * 2 ** ((midiFloat - 69) / 12);
+      return makeTrailPoint(index * 20, frequency);
+    });
+    const plot = projectTrail(points, 160, 400, 160, 48);
+    const visibleSegments = plot.segments.filter((segment) => segment.length > 0);
+    expect(visibleSegments).toHaveLength(1);
+    const contour = visibleSegments[0] ?? [];
+    expect(contour).toHaveLength(points.length);
+    expect(contour.every((point, index, all) => index === 0 || point.y < (all[index - 1]?.y ?? point.y))).toBe(true);
+  });
 });

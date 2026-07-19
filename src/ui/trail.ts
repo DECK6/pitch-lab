@@ -19,6 +19,12 @@ export interface TrailPlot {
 
 export const TRAIL_SMOOTHING_MS = 160;
 export const TRAIL_DEADBAND_CENTS = 1.5;
+export const TRAIL_RANGE_SEMITONES = 24;
+
+function pitchCents(point: TrailPoint): number | null {
+  if (point.midi === null || point.cents === null) return null;
+  return point.midi * 100 + point.cents;
+}
 
 export function makeTrailPoint(time: number, frequencyHz: number | null, breakBefore = false): TrailPoint {
   const note = frequencyHz === null ? null : frequencyToNote(frequencyHz);
@@ -32,60 +38,82 @@ export function makeTrailPoint(time: number, frequencyHz: number | null, breakBe
 
 export function smoothTrailPoints(points: TrailPoint[]): TrailPoint[] {
   let previousRaw: TrailPoint | null = null;
-  let previousSmoothedCents: number | null = null;
+  let previousRawPitchCents: number | null = null;
+  let previousSmoothedPitchCents: number | null = null;
 
   return points.map((point) => {
-    if (point.midi === null || point.cents === null) {
+    const rawPitchCents = pitchCents(point);
+    if (rawPitchCents === null) {
       previousRaw = null;
-      previousSmoothedCents = null;
+      previousRawPitchCents = null;
+      previousSmoothedPitchCents = null;
       return point;
     }
 
     const gapMs = previousRaw === null ? 0 : point.time - previousRaw.time;
     const shouldReset = point.breakBefore
       || previousRaw === null
-      || previousRaw.midi !== point.midi
       || gapMs > 250
-      || previousRaw.cents === null
-      || Math.abs(point.cents - previousRaw.cents) > 35;
-    let cents = point.cents;
+      || previousRawPitchCents === null
+      || Math.abs(rawPitchCents - previousRawPitchCents) > 35;
+    let smoothedPitchCents = rawPitchCents;
 
-    if (!shouldReset && previousSmoothedCents !== null) {
-      const difference = point.cents - previousSmoothedCents;
+    if (!shouldReset && previousSmoothedPitchCents !== null) {
+      const difference = rawPitchCents - previousSmoothedPitchCents;
       if (Math.abs(difference) <= TRAIL_DEADBAND_CENTS) {
-        cents = previousSmoothedCents;
+        smoothedPitchCents = previousSmoothedPitchCents;
       } else {
         const alpha = 1 - Math.exp(-Math.max(0, gapMs) / TRAIL_SMOOTHING_MS);
-        cents = previousSmoothedCents + difference * alpha;
+        smoothedPitchCents = previousSmoothedPitchCents + difference * alpha;
       }
     }
 
-    const smoothed = { ...point, cents, breakBefore: shouldReset };
+    const midi = Math.round(smoothedPitchCents / 100);
+    const smoothed = {
+      ...point,
+      midi,
+      cents: smoothedPitchCents - midi * 100,
+      breakBefore: shouldReset,
+    };
     previousRaw = point;
-    previousSmoothedCents = cents;
+    previousRawPitchCents = rawPitchCents;
+    previousSmoothedPitchCents = smoothedPitchCents;
     return smoothed;
   });
 }
 
-export function projectTrail(points: TrailPoint[], now: number, width: number, height: number): TrailPlot {
+export function projectTrail(
+  points: TrailPoint[],
+  now: number,
+  width: number,
+  height: number,
+  rangeStartMidi?: number,
+): TrailPlot {
   const segments: PlotPoint[][] = [];
   let segment: PlotPoint[] = [];
   let previous: TrailPoint | null = null;
   let marker: PlotPoint | null = null;
+  const smoothedPoints = smoothTrailPoints(points);
+  const firstPitchCents = smoothedPoints.map(pitchCents).find((value) => value !== null);
+  const resolvedRangeStart = rangeStartMidi ?? (firstPitchCents === undefined || firstPitchCents === null
+    ? 48
+    : firstPitchCents / 100 - TRAIL_RANGE_SEMITONES / 2);
+  const rangeEnd = resolvedRangeStart + TRAIL_RANGE_SEMITONES;
 
-  for (const point of smoothTrailPoints(points)) {
-    if (point.midi === null || point.cents === null) {
+  for (const point of smoothedPoints) {
+    const absolutePitchCents = pitchCents(point);
+    if (absolutePitchCents === null) {
       segment = [];
       previous = null;
       continue;
     }
     const x = width - (now - point.time) / 4000 * width;
-    const y = height - (Math.max(-50, Math.min(50, point.cents)) + 50) / 100 * height;
+    const absoluteMidi = absolutePitchCents / 100;
+    const clampedMidi = Math.max(resolvedRangeStart, Math.min(rangeEnd, absoluteMidi));
+    const y = height - (clampedMidi - resolvedRangeStart) / TRAIL_RANGE_SEMITONES * height;
     const shouldBreak = point.breakBefore
       || previous === null
-      || previous.midi !== point.midi
-      || point.time - previous.time > 250
-      || (previous.cents !== null && Math.abs(point.cents - previous.cents) > 35);
+      || point.time - previous.time > 250;
     if (shouldBreak) {
       segment = [];
       segments.push(segment);
@@ -102,6 +130,7 @@ export function projectTrail(points: TrailPoint[], now: number, width: number, h
 export class PitchTrail {
   private readonly points: TrailPoint[] = [];
   private animationFrame = 0;
+  private rangeStartMidi: number | null = null;
 
   constructor(private readonly canvas: HTMLCanvasElement) {
     const resize = new ResizeObserver(() => this.scheduleDraw());
@@ -109,13 +138,24 @@ export class PitchTrail {
   }
 
   push(time: number, frequencyHz: number | null, discontinuity = false): void {
-    this.points.push(makeTrailPoint(time, frequencyHz, discontinuity));
+    const point = makeTrailPoint(time, frequencyHz, discontinuity);
+    const absolutePitchCents = pitchCents(point);
+    if (absolutePitchCents !== null) {
+      const absoluteMidi = absolutePitchCents / 100;
+      if (this.rangeStartMidi === null
+        || absoluteMidi < this.rangeStartMidi
+        || absoluteMidi > this.rangeStartMidi + TRAIL_RANGE_SEMITONES) {
+        this.rangeStartMidi = absoluteMidi - TRAIL_RANGE_SEMITONES / 2;
+      }
+    }
+    this.points.push(point);
     while (this.points[0] && time - this.points[0].time > 4000) this.points.shift();
     this.scheduleDraw();
   }
 
   clear(): void {
     this.points.length = 0;
+    this.rangeStartMidi = null;
     this.scheduleDraw();
   }
 
@@ -150,7 +190,7 @@ export class PitchTrail {
     }
     if (this.points.length < 2) return;
     const now = this.points[this.points.length - 1]?.time ?? 0;
-    const plot = projectTrail(this.points, now, width, height);
+    const plot = projectTrail(this.points, now, width, height, this.rangeStartMidi ?? undefined);
     context.strokeStyle = '#3477ad';
     context.lineWidth = 2.5;
     context.lineJoin = 'round';

@@ -7,7 +7,12 @@ interface Voice {
 }
 
 const MAX_TONE_MS = 10_000;
-export const REFERENCE_TONE_GAIN = 0.42;
+const REFERENCE_TONE_SWITCH_SECONDS = 0.02;
+export const REFERENCE_TONE_GAIN = 0.72;
+
+export function referenceToneStartDelay(hadCurrentVoice: boolean): number {
+  return hadCurrentVoice ? REFERENCE_TONE_SWITCH_SECONDS : 0;
+}
 
 export class ReferenceTone {
   private context: AudioContext | null = null;
@@ -32,21 +37,23 @@ export class ReferenceTone {
     }
     const context = this.context ?? new AudioContext({ latencyHint: 'interactive' });
     this.context = context;
-    this.fadeCurrent(0.02);
+    const hadCurrentVoice = this.fadeCurrent(REFERENCE_TONE_SWITCH_SECONDS);
     if (context.state === 'suspended') await context.resume();
     if (generation !== this.gateGeneration || this.pendingMidi !== midi) return;
     this.pendingMidi = null;
     this.onGate(true);
 
     const now = context.currentTime;
+    const startAt = now + referenceToneStartDelay(hadCurrentVoice);
     const oscillator = context.createOscillator();
     const gain = context.createGain();
     oscillator.type = 'sine';
     oscillator.frequency.setValueAtTime(midiToFrequency(midi), now);
     gain.gain.setValueAtTime(0, now);
-    gain.gain.linearRampToValueAtTime(REFERENCE_TONE_GAIN, now + 0.005);
+    gain.gain.setValueAtTime(0, startAt);
+    gain.gain.linearRampToValueAtTime(REFERENCE_TONE_GAIN, startAt + 0.005);
     oscillator.connect(gain).connect(context.destination);
-    oscillator.start(now);
+    oscillator.start(startAt);
     this.current = { midi, oscillator, gain };
     this.safetyTimer = window.setTimeout(() => this.release(midi), MAX_TONE_MS);
   }
@@ -98,10 +105,10 @@ export class ReferenceTone {
     if (context && context.state !== 'closed') await context.close().catch(() => undefined);
   }
 
-  private fadeCurrent(seconds: number): void {
+  private fadeCurrent(seconds: number): boolean {
     const voice = this.current;
     const context = this.context;
-    if (!voice || !context) return;
+    if (!voice || !context) return false;
     this.current = null;
     const now = context.currentTime;
     voice.gain.gain.cancelScheduledValues(now);
@@ -112,5 +119,6 @@ export class ReferenceTone {
       voice.oscillator.disconnect();
       voice.gain.disconnect();
     }, { once: true });
+    return true;
   }
 }

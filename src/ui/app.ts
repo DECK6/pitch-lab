@@ -236,7 +236,7 @@ function shellMarkup(): string {
               <div><dt>OFFSET</dt><dd id="cents-value">— cent</dd></div>
             </dl>
           </div>
-          <div class="trail-block"><span>PITCH TRAIL / LAST 4 SECONDS</span><canvas id="pitch-trail" aria-label="Recent pitch contour"></canvas><div class="trail-axis"><small>−4.0s</small><small>−2.0s</small><small>NOW</small></div></div>
+          <div class="trail-block"><span>PITCH CONTOUR / 2 OCTAVE RANGE · LAST 4 SECONDS</span><canvas id="pitch-trail" aria-label="Recent pitch contour"></canvas><div class="trail-axis"><small>−4.0s</small><small>−2.0s</small><small>NOW</small></div></div>
         </section>
 
         <aside class="panel engine-panel" aria-labelledby="engine-title">
