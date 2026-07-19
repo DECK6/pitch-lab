@@ -11,3 +11,4 @@ public/models/
 public/ai-manifest.json
 *.log
 .DS_Store
+.gstack/
