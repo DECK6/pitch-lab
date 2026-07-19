@@ -46,10 +46,10 @@ button.function-pad { cursor: pointer; }
 .piano-meta div { display: flex; flex-direction: column; gap: 4px; }
 .piano-meta small { color: var(--muted); font-size: 0.65rem; }
 .pill { padding: 5px 8px; color: #fff; background: #2b2c28; border-radius: 999px; font-size: 0.64rem; white-space: nowrap; }
-.piano-scroll { overflow-x: auto; padding: 10px; scrollbar-color: #595b53 #cbc8bd; }
+.piano-scroll { overflow-x: auto; overscroll-behavior-inline: contain; -webkit-overflow-scrolling: touch; padding: 10px; scrollbar-color: #595b53 #cbc8bd; }
 .piano-surface { position: relative; width: calc(var(--white-count) * 68px); min-width: calc(var(--white-count) * 68px); height: 138px; }
 .white-keys { display: flex; height: 100%; }
-.piano-key { user-select: none; touch-action: none; cursor: pointer; }
+.piano-key { user-select: none; touch-action: pan-x pan-y; cursor: pointer; }
 .white-key { width: 68px; height: 138px; flex: 0 0 68px; display: flex; align-items: flex-end; justify-content: center; padding: 10px 2px; border: 1px solid var(--line); border-radius: 0 0 5px 5px; background: #f0ecdf; font-size: 0.68rem; }
 .black-key-slot { position: absolute; top: 0; width: 40px; height: 88px; z-index: 2; }
 .black-key { width: 40px; height: 88px; display: flex; align-items: flex-end; justify-content: center; padding: 8px 1px; border: 1px solid #111; border-radius: 0 0 4px 4px; background: #242521; color: #fff; font-size: 0.58rem; box-shadow: 0 3px 0 #111; }

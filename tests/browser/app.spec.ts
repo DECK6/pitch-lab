@@ -32,11 +32,59 @@ test('reference keyboard is touch-sized and updates octave range', async ({ page
 });
 
 test('mobile layout does not overflow the viewport', async ({ page }, testInfo) => {
-  test.skip(testInfo.project.name !== 'mobile-webkit');
+  test.skip(!testInfo.project.name.startsWith('mobile-'));
   await page.goto('/');
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(1);
   await expect(page.getByRole('button', { name: /MIC START/ })).toBeVisible();
+});
+
+test('mobile keyboard scrolls horizontally when swiping across keys', async ({ page, context }, testInfo) => {
+  test.skip(testInfo.project.name !== 'mobile-chromium');
+  await page.goto('/');
+  const piano = page.locator('#piano-keys');
+  const dimensions = await piano.evaluate((element) => ({
+    clientWidth: element.clientWidth,
+    scrollWidth: element.scrollWidth,
+    touchAction: getComputedStyle(element.querySelector('.piano-key')!).touchAction,
+  }));
+  expect(dimensions.scrollWidth).toBeGreaterThan(dimensions.clientWidth);
+  expect(dimensions.touchAction).toBe('pan-x pan-y');
+
+  const key = page.locator('.white-key').nth(3);
+  const box = await key.boundingBox();
+  expect(box).not.toBeNull();
+  const startX = Math.round(box!.x + box!.width / 2);
+  const y = Math.round(box!.y + box!.height * 0.65);
+  const client = await context.newCDPSession(page);
+  await client.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: startX, y }] });
+  for (let step = 1; step <= 6; step += 1) {
+    await client.send('Input.dispatchTouchEvent', {
+      type: 'touchMove',
+      touchPoints: [{ x: startX - step * 35, y }],
+    });
+  }
+  await client.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+
+  await expect.poll(() => piano.evaluate((element) => element.scrollLeft)).toBeGreaterThan(100);
+  await expect(piano.locator('.piano-key.is-active')).toHaveCount(0);
+
+  await piano.evaluate((element) => { element.scrollLeft = 0; });
+  const verticalKeyBox = await key.boundingBox();
+  expect(verticalKeyBox).not.toBeNull();
+  const verticalX = Math.round(verticalKeyBox!.x + verticalKeyBox!.width / 2);
+  const verticalY = Math.round(verticalKeyBox!.y + verticalKeyBox!.height * 0.65);
+  await client.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: verticalX, y: verticalY }] });
+  for (let step = 1; step <= 6; step += 1) {
+    await client.send('Input.dispatchTouchEvent', {
+      type: 'touchMove',
+      touchPoints: [{ x: verticalX, y: verticalY - step * 35 }],
+    });
+  }
+  await client.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(100);
+  await expect(piano.locator('.piano-key.is-active')).toHaveCount(0);
 });
 
 test('detects fake A4 in Light and loads the real Neural engine on demand', async ({ page }, testInfo) => {
