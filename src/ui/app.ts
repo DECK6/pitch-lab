@@ -211,7 +211,7 @@ function shellMarkup(): string {
 
       <section class="panel piano-panel" aria-labelledby="piano-title">
         <div class="panel-head"><strong id="piano-title">03 / REFERENCE PIANO</strong><span aria-hidden="true">○</span></div>
-        <div class="piano-meta"><div><strong id="reference-range">C3–B4</strong><small>TWO OCTAVE · SWIPE / SCROLL · PURE SINE · USE HEADPHONES TO SING ALONG</small></div><span class="pill">PURE TONE</span></div>
+        <div class="piano-meta"><div><strong id="reference-range">C3–B4</strong><small>TWO OCTAVE · SWIPE / SCROLL · BRIGHT TRIANGLE · USE HEADPHONES TO SING ALONG</small></div><span class="pill">BRIGHT TONE</span></div>
         <div id="piano-keys" class="piano-scroll" aria-label="Two octave reference keyboard"></div>
       </section>
 

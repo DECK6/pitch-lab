@@ -8,7 +8,8 @@ interface Voice {
 
 const MAX_TONE_MS = 10_000;
 const REFERENCE_TONE_SWITCH_SECONDS = 0.02;
-export const REFERENCE_TONE_GAIN = 0.72;
+export const REFERENCE_TONE_GAIN = 0.9;
+export const REFERENCE_TONE_WAVEFORM: OscillatorType = 'triangle';
 
 export function referenceToneStartDelay(hadCurrentVoice: boolean): number {
   return hadCurrentVoice ? REFERENCE_TONE_SWITCH_SECONDS : 0;
@@ -47,7 +48,7 @@ export class ReferenceTone {
     const startAt = now + referenceToneStartDelay(hadCurrentVoice);
     const oscillator = context.createOscillator();
     const gain = context.createGain();
-    oscillator.type = 'sine';
+    oscillator.type = REFERENCE_TONE_WAVEFORM;
     oscillator.frequency.setValueAtTime(midiToFrequency(midi), now);
     gain.gain.setValueAtTime(0, now);
     gain.gain.setValueAtTime(0, startAt);
