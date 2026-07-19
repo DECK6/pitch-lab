@@ -1,0 +1,32 @@
+{
+  "name": "pitch-lab-01",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "assets:prepare": "node scripts/prepare-ai-assets.mjs",
+    "fixtures:generate": "node scripts/generate-audio-fixture.mjs",
+    "dev": "npm run assets:prepare && vite",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "build": "npm run assets:prepare && npm run typecheck && vite build",
+    "budget": "node scripts/check-bundle-budget.mjs",
+    "preqa:smoke": "npm run fixtures:generate",
+    "qa:smoke": "playwright test",
+    "verify": "npm run test && npm run build && npm run budget"
+  },
+  "dependencies": {
+    "onnxruntime-web": "1.27.0",
+    "pitchy": "4.1.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.61.1",
+    "typescript": "7.0.2",
+    "vite": "8.1.5",
+    "vitest": "4.1.10"
+  }
+}

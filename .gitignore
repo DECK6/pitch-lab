@@ -1,10 +1,13 @@
 node_modules/
 dist/
 .vite/
+.cache/
 coverage/
 playwright-report/
 test-results/
 src/assets/swiftf0/model.onnx
+public/ort/
+public/models/
+public/ai-manifest.json
 *.log
 .DS_Store
-
