@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { PitchSmoother, confidenceBand } from '../src/audio/smoothing';
 import type { RawPitchResult } from '../src/audio/types';
 import { meterNeedleEndpoint } from '../src/ui/app';
-import { makeTrailPoint, projectTrail } from '../src/ui/trail';
+import { makeTrailPoint, projectTrail, smoothTrailPoints } from '../src/ui/trail';
 
 const raw = (frequencyHz: number | null, confidence = 0.9, audioTimeMs = 0): RawPitchResult => ({
   frequencyHz,
@@ -66,5 +66,25 @@ describe('mobile pitch display regressions', () => {
     const visibleSegments = plot.segments.filter((segment) => segment.length > 0);
     expect(visibleSegments.map((segment) => segment.length)).toEqual([1, 2, 1]);
     expect(visibleSegments.flat().every(({ y }) => y >= 0 && y <= 160)).toBe(true);
+  });
+
+  it('calms frame-to-frame jitter without smearing across note changes', () => {
+    const jitter = [-10, 10, -10, 10, -10, 10].map((cents, index) => ({
+      time: index * 20,
+      midi: 57,
+      cents,
+      breakBefore: false,
+    }));
+    const smoothed = smoothTrailPoints(jitter);
+    const smoothedCents = smoothed.map((point) => point.cents ?? 0);
+    const smoothedSpan = Math.max(...smoothedCents) - Math.min(...smoothedCents);
+    expect(smoothedSpan).toBeLessThan(6);
+
+    const noteChange = smoothTrailPoints([
+      ...jitter,
+      { time: 120, midi: 58, cents: 20, breakBefore: false },
+    ]).at(-1);
+    expect(noteChange?.cents).toBe(20);
+    expect(noteChange?.breakBefore).toBe(true);
   });
 });

@@ -7,6 +7,7 @@ interface Voice {
 }
 
 const MAX_TONE_MS = 10_000;
+export const REFERENCE_TONE_GAIN = 0.42;
 
 export class ReferenceTone {
   private context: AudioContext | null = null;
@@ -43,7 +44,7 @@ export class ReferenceTone {
     oscillator.type = 'sine';
     oscillator.frequency.setValueAtTime(midiToFrequency(midi), now);
     gain.gain.setValueAtTime(0, now);
-    gain.gain.linearRampToValueAtTime(0.22, now + 0.005);
+    gain.gain.linearRampToValueAtTime(REFERENCE_TONE_GAIN, now + 0.005);
     oscillator.connect(gain).connect(context.destination);
     oscillator.start(now);
     this.current = { midi, oscillator, gain };

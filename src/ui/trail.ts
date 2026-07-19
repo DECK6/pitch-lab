@@ -17,6 +17,9 @@ export interface TrailPlot {
   marker: PlotPoint | null;
 }
 
+export const TRAIL_SMOOTHING_MS = 160;
+export const TRAIL_DEADBAND_CENTS = 1.5;
+
 export function makeTrailPoint(time: number, frequencyHz: number | null, breakBefore = false): TrailPoint {
   const note = frequencyHz === null ? null : frequencyToNote(frequencyHz);
   return {
@@ -27,13 +30,50 @@ export function makeTrailPoint(time: number, frequencyHz: number | null, breakBe
   };
 }
 
+export function smoothTrailPoints(points: TrailPoint[]): TrailPoint[] {
+  let previousRaw: TrailPoint | null = null;
+  let previousSmoothedCents: number | null = null;
+
+  return points.map((point) => {
+    if (point.midi === null || point.cents === null) {
+      previousRaw = null;
+      previousSmoothedCents = null;
+      return point;
+    }
+
+    const gapMs = previousRaw === null ? 0 : point.time - previousRaw.time;
+    const shouldReset = point.breakBefore
+      || previousRaw === null
+      || previousRaw.midi !== point.midi
+      || gapMs > 250
+      || previousRaw.cents === null
+      || Math.abs(point.cents - previousRaw.cents) > 35;
+    let cents = point.cents;
+
+    if (!shouldReset && previousSmoothedCents !== null) {
+      const difference = point.cents - previousSmoothedCents;
+      if (Math.abs(difference) <= TRAIL_DEADBAND_CENTS) {
+        cents = previousSmoothedCents;
+      } else {
+        const alpha = 1 - Math.exp(-Math.max(0, gapMs) / TRAIL_SMOOTHING_MS);
+        cents = previousSmoothedCents + difference * alpha;
+      }
+    }
+
+    const smoothed = { ...point, cents, breakBefore: shouldReset };
+    previousRaw = point;
+    previousSmoothedCents = cents;
+    return smoothed;
+  });
+}
+
 export function projectTrail(points: TrailPoint[], now: number, width: number, height: number): TrailPlot {
   const segments: PlotPoint[][] = [];
   let segment: PlotPoint[] = [];
   let previous: TrailPoint | null = null;
   let marker: PlotPoint | null = null;
 
-  for (const point of points) {
+  for (const point of smoothTrailPoints(points)) {
     if (point.midi === null || point.cents === null) {
       segment = [];
       previous = null;
