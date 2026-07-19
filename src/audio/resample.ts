@@ -60,4 +60,3 @@ function sinc(value: number): number {
   if (Math.abs(value) < 1e-8) return 1;
   return Math.sin(Math.PI * value) / (Math.PI * value);
 }
-

@@ -102,4 +102,3 @@ function midiToStableFrequency(previousMidi: number, centsFromNew: number, measu
   const deltaCents = 1200 * Math.log2(measuredFrequency / previousFrequency);
   return Math.abs(deltaCents) < 58 ? measuredFrequency : previousFrequency;
 }
-

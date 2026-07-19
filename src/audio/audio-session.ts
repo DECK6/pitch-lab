@@ -54,6 +54,7 @@ export class AudioSession {
       this.setState('error', 'A secure HTTPS page with Web Audio and microphone support is required.');
       return;
     }
+    if (this.state === 'needs_restart') await this.stopResources();
     const generation = ++this.generation;
     this.setState('requesting_permission', 'Waiting for microphone permission…');
     try {
@@ -67,7 +68,9 @@ export class AudioSession {
       const context = new AudioContext({ latencyHint: 'interactive' });
       this.context = context;
       await context.audioWorklet.addModule(captureWorkletUrl);
+      if (generation !== this.generation) return;
       if (context.state === 'suspended') await context.resume();
+      if (generation !== this.generation) return;
 
       const track = stream.getAudioTracks()[0];
       if (!track) throw new Error('No audio track was provided.');
@@ -114,6 +117,7 @@ export class AudioSession {
       this.callbacks.onEngine('light');
       this.setState('running');
     } catch (error) {
+      if (generation !== this.generation) return;
       await this.stopResources();
       const domError = error as DOMException;
       if (domError?.name === 'NotAllowedError' || domError?.name === 'SecurityError') {

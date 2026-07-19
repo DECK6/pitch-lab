@@ -21,4 +21,3 @@ export type EngineWorkerOutput =
   | { type: 'processed'; result: RawPitchResult; buffer: ArrayBuffer }
   | { type: 'error'; message: string; code: string }
   | { type: 'disposed' };
-

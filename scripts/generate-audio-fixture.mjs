@@ -34,4 +34,3 @@ for (let index = 0; index < samples; index += 1) {
 await mkdir(dirname(output), { recursive: true });
 await writeFile(output, buffer);
 console.log(`Generated ${output}`);
-

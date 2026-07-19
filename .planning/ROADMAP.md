@@ -16,9 +16,10 @@
 5. A release report clearly separates automated evidence from physical-device checks still required.
 
 **Plans:**
-- [ ] 01-01 — Core audio, dual engines, instrument UI, and release verification
+- [x] 01-01 — Core audio, dual engines, instrument UI, and automated release verification
+
+Physical iPhone/Android/desktop microphone verification remains the explicit release-candidate gate tracked by REL-03.
 
 ## Future milestone — Score-guided practice
 
 PDF score ingestion, note grading, and choir-part extraction remain intentionally outside the current milestone.
-

@@ -23,4 +23,3 @@ describe('pitch math', () => {
     expect(frequencyToNote(Number.NaN)).toBeNull();
   });
 });
-

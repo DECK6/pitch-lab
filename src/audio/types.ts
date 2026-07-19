@@ -49,4 +49,3 @@ export interface DeviceDiagnostics {
   autoGainControl: boolean | null;
   processingActive: boolean;
 }
-

@@ -88,7 +88,13 @@ export class PianoView {
     }
     this.activeMidi = midi;
     button.classList.add('is-active');
-    await this.tone.play(midi);
+    try {
+      await this.tone.play(midi);
+    } catch {
+      this.tone.release(midi);
+      button.classList.remove('is-active');
+      if (this.activeMidi === midi) this.activeMidi = null;
+    }
   }
 
   private release(midi: number, button: HTMLButtonElement): void {
@@ -98,4 +104,3 @@ export class PianoView {
     this.activeMidi = null;
   }
 }
-

@@ -21,7 +21,7 @@ PITCH/LAB 01 is an install-free, responsive web instrument that identifies a sin
 - Request mono audio with `echoCancellation`, `noiseSuppression`, and `autoGainControl` ideally disabled; use actual device settings and sample rate.
 - Collect PCM in an AudioWorklet and process it in a Worker. Keep at most one in-flight and one latest pending buffer; never build an unbounded queue.
 - Light uses Pitchy/McLeod with a 4096-sample window, 1024 hop, C2-C6 display range, -55 dBFS RMS gate, and confidence hysteresis.
-- Neural resamples stream input to 16 kHz, keeps a 4096-sample rolling window, and runs SwiftF0 every 512 samples. It validates `input_audio`, `pitch_hz`, and `confidence` tensor contracts.
+- Neural resamples stream input to 16 kHz, keeps a 4096-sample rolling window, and runs SwiftF0 every 512 samples. SwiftF0 supplies the voiced/confidence estimate, while a bounded McLeod refinement on the same window removes frequency-dependent model bias without quantizing the singer to a note. The adapter validates `input_audio`, `pitch_hz`, and `confidence` tensor contracts.
 - Engine output is normalized to monotonic `PitchFrame` values. Invalid or unvoiced frequency is `null`, never zero, NaN, or a stale value.
 - Reference tones gate detection until 300 ms after their 200 ms release so speakers do not grade themselves.
 
@@ -60,4 +60,3 @@ PITCH/LAB 01 is an install-free, responsive web instrument that identifies a sin
 3. No ONNX JavaScript, WASM, glue module, or model request occurs before the user selects Neural.
 4. Each reference key is within 0.1 cent of its 12-TET frequency, only one oscillator exists, and no voice sticks after release.
 5. The production build passes unit, worker, browser smoke, and separate initial/neural bundle-budget checks.
-

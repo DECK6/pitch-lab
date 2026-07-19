@@ -12,16 +12,15 @@ A person can sing one note and immediately understand what note it is and whethe
 
 ### Validated
 
-(None yet — ship to validate.)
+- [x] Detect monophonic pitch locally with Light DSP by default.
+- [x] Let the user select a real, lazy-loaded SwiftF0 neural engine in the first release.
+- [x] Show note, octave, cents, frequency, confidence, level, latency, and recent contour.
+- [x] Produce exact monophonic sine reference notes from a touch-friendly two-octave keyboard.
+- [x] Keep the initial app shell under 250 KB compressed and optional neural assets under 15 MB raw.
 
 ### Active
 
-- [ ] Detect monophonic pitch locally with Light DSP by default.
-- [ ] Let the user select a real, lazy-loaded SwiftF0 neural engine in the first release.
-- [ ] Show note, octave, cents, frequency, confidence, level, latency, and recent contour.
-- [ ] Produce exact monophonic sine reference notes from a touch-friendly two-octave keyboard.
 - [ ] Run on current desktop and mobile browsers, including iOS Safari.
-- [ ] Keep the initial app shell under 250 KB compressed and optional neural assets under 15 MB raw.
 
 ### Out of Scope
 
@@ -47,16 +46,15 @@ The approved design deliberately exposes the trade between a tiny, immediate DSP
 
 | Decision | Rationale | Outcome |
 |---|---|---|
-| Vanilla TypeScript + Vite | Avoid a framework runtime and keep the shell small | — Pending |
-| Pitchy/McLeod default engine | Proven small browser DSP with confidence output | — Pending |
-| SwiftF0 v0.1.1 + ORT WASM optional engine | Small model, local inference, iOS-compatible CPU backend | — Pending |
-| Dynamic import after explicit selection | Prevent any neural request in the default flow | — Pending |
-| Neutral `NEURAL` label | Avoid accuracy claims before comparative evidence | — Pending |
+| Vanilla TypeScript + Vite | Avoid a framework runtime and keep the shell small | Validated by 17 KB Brotli initial graph |
+| Pitchy/McLeod default engine | Proven small browser DSP with confidence output | Validated on deterministic fixtures and browser fake mic |
+| SwiftF0 v0.1.1 + ORT WASM optional engine | Small model, local inference, iOS-compatible CPU backend | Automated browser passed; physical iPhone pending |
+| Dynamic import after explicit selection | Prevent any neural request in the default flow | Validated by browser request inspection |
+| Neutral `NEURAL` label | Avoid accuracy claims before comparative evidence | Retained after measured model bias |
 
 ## Evolution
 
 This document evolves at phase transitions and milestone boundaries. Validated requirements move above only after implementation and browser verification.
 
 ---
-*Last updated: 2026-07-19 after initialization*
-
+*Last updated: 2026-07-19 after automated implementation verification*

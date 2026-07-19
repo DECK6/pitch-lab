@@ -1,6 +1,7 @@
 /// <reference lib="webworker" />
+import { PitchDetector } from 'pitchy';
 import { StreamingSincResampler } from './resample';
-import { clippingRatio, rmsDb } from './signal';
+import { clippingRatio, refinePitchCandidate, rmsDb } from './signal';
 import type { EngineWorkerInput, EngineWorkerOutput } from './protocol';
 
 interface AssetRecord {
@@ -29,6 +30,7 @@ let rollingFilled = 0;
 let samplesSinceInference = 0;
 let loadAbort: AbortController | null = null;
 let cancelled = false;
+const refinementDetector = PitchDetector.forFloat32Array(4096);
 
 function post(message: EngineWorkerOutput, transfer: Transferable[] = []): void {
   scope.postMessage(message, transfer);
@@ -167,7 +169,9 @@ async function processPcm(message: Extract<EngineWorkerInput, { type: 'pcm' }>):
       const index = Math.max(0, pitch.length - 2);
       const candidate = pitch[index] ?? 0;
       confidence = confidences[index] ?? 0;
-      frequencyHz = Number.isFinite(candidate) && candidate > 0 && confidence >= 0.75 ? candidate : null;
+      const refined = refinePitchCandidate(rolling, 16_000, candidate, confidence, refinementDetector);
+      frequencyHz = refined.frequencyHz;
+      confidence = refined.confidence;
       outputs.pitch_hz?.dispose();
       outputs.confidence?.dispose();
     }
@@ -223,4 +227,3 @@ scope.onmessage = (event: MessageEvent<EngineWorkerInput>) => {
     });
   }
 };
-

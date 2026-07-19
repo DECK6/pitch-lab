@@ -41,4 +41,3 @@ export function noteNameForMidi(midi: number): string {
   const octave = Math.floor(midi / 12) - 1;
   return `${SHARP_NAMES[index] ?? '—'}${octave}`;
 }
-

@@ -56,4 +56,3 @@ scope.onmessage = (event: MessageEvent<EngineWorkerInput>) => {
     buffer: message.buffer,
   }, [message.buffer]);
 };
-

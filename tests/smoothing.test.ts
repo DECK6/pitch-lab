@@ -36,4 +36,3 @@ describe('pitch smoothing', () => {
     expect(smoother.push(raw(440), { sessionId: 's', sequence: 3, nowMs: 30, dropped: 0, discontinuity: true }).voiced).toBe(false);
   });
 });
-

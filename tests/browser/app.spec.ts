@@ -23,8 +23,12 @@ test('reference keyboard is touch-sized and updates octave range', async ({ page
   const box = await a4.boundingBox();
   expect(box?.width).toBeGreaterThanOrEqual(40);
   expect(box?.height).toBeGreaterThanOrEqual(44);
+  await a4.click();
+  await expect(page.locator('#signal-state')).toHaveText('MIC OFF', { timeout: 2_000 });
+  await expect(page.locator('#tuning-state')).toHaveText('MIC OFF');
   await page.getByRole('button', { name: /OCTAVE/ }).click();
   await expect(page.getByText('C4–B5')).toBeVisible();
+  await expect(page.getByRole('button', { name: /OCTAVE 4–5/ })).toBeVisible();
 });
 
 test('mobile layout does not overflow the viewport', async ({ page }, testInfo) => {
@@ -48,6 +52,14 @@ test('detects fake A4 in Light and loads the real Neural engine on demand', asyn
   await expect(page.getByRole('button', { name: /STOP MIC/ })).toBeVisible({ timeout: 10_000 });
   await expect(page.locator('#note-name')).toHaveText('A', { timeout: 10_000 });
   await expect(page.locator('#note-octave')).toHaveText('4');
+  await expect(page.locator('#frequency-value')).toContainText('440.0');
+  expect(Number((await page.locator('#cents-value').textContent())?.match(/\d+/)?.[0] ?? 99)).toBeLessThanOrEqual(5);
+
+  await page.getByRole('button', { name: /STOP MIC/ }).click();
+  await expect(page.getByRole('button', { name: /MIC START/ })).toBeVisible();
+  await page.getByRole('button', { name: /MIC START/ }).click();
+  await expect(page.getByRole('button', { name: /STOP MIC/ })).toBeVisible({ timeout: 10_000 });
+  await expect(page.locator('#note-name')).toHaveText('A', { timeout: 10_000 });
 
   await page.getByRole('button', { name: /NEURAL/ }).click();
   await expect(page.locator('#neural-stage')).toContainText(/READY/, { timeout: 40_000 });
@@ -55,5 +67,75 @@ test('detects fake A4 in Light and loads the real Neural engine on demand', asyn
   expect(neuralRequests.some((url) => url.includes('ai-manifest'))).toBe(true);
   expect(neuralRequests.some((url) => url.includes('.onnx'))).toBe(true);
   expect(neuralRequests.some((url) => url.includes('.wasm'))).toBe(true);
+  await expect(page.locator('#note-name')).toHaveText('A', { timeout: 10_000 });
+  expect(Number((await page.locator('#cents-value').textContent())?.match(/\d+/)?.[0] ?? 99)).toBeLessThanOrEqual(5);
+
+  const loadedRequestCount = neuralRequests.length;
+  await page.getByRole('button', { name: /LIGHT DSP/ }).click();
+  await expect(page.getByRole('button', { name: /LIGHT DSP/ })).toHaveClass(/is-selected/);
+  await page.getByRole('button', { name: /NEURAL/ }).click();
+  await expect(page.getByRole('button', { name: /NEURAL/ })).toHaveClass(/is-selected/);
+  await expect(page.locator('#note-name')).toHaveText('A', { timeout: 10_000 });
+  expect(neuralRequests).toHaveLength(loadedRequestCount);
+});
+
+test('cancelling Neural loading keeps Light live', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop-chromium');
+  await page.route('**/ai-manifest.json', async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    await route.continue().catch(() => undefined);
+  });
+  await page.goto('/');
+  await page.getByRole('button', { name: /MIC START/ }).click();
+  await expect(page.locator('#note-name')).toHaveText('A', { timeout: 10_000 });
+  await page.getByRole('button', { name: /NEURAL/ }).click();
+  await expect(page.getByRole('button', { name: 'CANCEL' })).toBeVisible();
+  await page.getByRole('button', { name: 'CANCEL' }).click();
+  await expect(page.locator('#neural-progress-text')).toContainText(/cancelled/i, { timeout: 5_000 });
+  await expect(page.getByRole('button', { name: /LIGHT DSP/ })).toHaveClass(/is-selected/);
+  await expect(page.locator('#note-name')).toHaveText('A', { timeout: 10_000 });
+});
+
+test('cancelling microphone startup does not fall through to an error', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop-chromium');
+  const pageErrors: string[] = [];
+  page.on('pageerror', (error) => pageErrors.push(error.message));
+  await page.route('**/assets/capture-worklet-*.js', async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    await route.continue().catch(() => undefined);
+  });
+  await page.goto('/');
+  await page.getByRole('button', { name: /MIC START/ }).click();
+  await expect(page.getByRole('button', { name: /CANCEL/ })).toBeVisible();
+  await page.getByRole('button', { name: /CANCEL/ }).click();
+  await expect(page.getByRole('button', { name: /MIC START/ })).toBeVisible();
+  await page.waitForTimeout(700);
+  await expect(page.getByRole('button', { name: /MIC START/ })).toBeVisible();
+  expect(pageErrors).toEqual([]);
+});
+
+test('restarts cleanly after the microphone track ends', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop-chromium');
+  await page.addInitScript(() => {
+    const original = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
+    navigator.mediaDevices.getUserMedia = async (constraints) => {
+      const stream = await original(constraints);
+      Object.assign(window, { __pitchLabTestStream: stream });
+      return stream;
+    };
+  });
+  await page.goto('/');
+  await page.getByRole('button', { name: /MIC START/ }).click();
+  await expect(page.locator('#note-name')).toHaveText('A', { timeout: 10_000 });
+  await page.evaluate(() => {
+    const stream = (window as typeof window & { __pitchLabTestStream?: MediaStream }).__pitchLabTestStream;
+    stream?.getTracks().forEach((track) => {
+      track.stop();
+      track.dispatchEvent(new Event('ended'));
+    });
+  });
+  await expect(page.locator('#app-message')).toContainText(/microphone route ended/i);
+  await page.getByRole('button', { name: /MIC START/ }).click();
+  await expect(page.getByRole('button', { name: /STOP MIC/ })).toBeVisible({ timeout: 10_000 });
   await expect(page.locator('#note-name')).toHaveText('A', { timeout: 10_000 });
 });

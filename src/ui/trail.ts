@@ -2,7 +2,7 @@ import { frequencyToMidi } from '../music/pitch-math';
 
 interface TrailPoint {
   time: number;
-  midi: number;
+  midi: number | null;
 }
 
 export class PitchTrail {
@@ -17,7 +17,7 @@ export class PitchTrail {
   push(time: number, frequencyHz: number | null, discontinuity = false): void {
     if (discontinuity) this.points.length = 0;
     const midi = frequencyHz === null ? null : frequencyToMidi(frequencyHz);
-    if (midi !== null) this.points.push({ time, midi });
+    this.points.push({ time, midi });
     while (this.points[0] && time - this.points[0].time > 4000) this.points.shift();
     this.scheduleDraw();
   }
@@ -58,7 +58,8 @@ export class PitchTrail {
     }
     if (this.points.length < 2) return;
     const now = this.points[this.points.length - 1]?.time ?? 0;
-    const midis = this.points.map(({ midi }) => midi);
+    const midis = this.points.flatMap(({ midi }) => midi === null ? [] : [midi]);
+    if (midis.length < 2) return;
     const center = midis.reduce((sum, midi) => sum + midi, 0) / midis.length;
     const min = center - 1;
     const max = center + 1;
@@ -66,21 +67,35 @@ export class PitchTrail {
     context.lineWidth = 2.5;
     context.lineJoin = 'round';
     context.beginPath();
-    this.points.forEach((point, index) => {
+    let drawing = false;
+    this.points.forEach((point) => {
+      if (point.midi === null) {
+        drawing = false;
+        return;
+      }
       const x = width - (now - point.time) / 4000 * width;
       const y = height - ((point.midi - min) / (max - min)) * height;
-      if (index === 0) context.moveTo(x, y);
+      if (!drawing) context.moveTo(x, y);
       else context.lineTo(x, y);
+      drawing = true;
     });
     context.stroke();
-    const last = this.points[this.points.length - 1];
-    if (last) {
+    let last: TrailPoint | undefined;
+    for (let index = this.points.length - 1; index >= 0; index -= 1) {
+      if (this.points[index]?.midi !== null) {
+        last = this.points[index];
+        break;
+      }
+    }
+    if (last?.midi !== null && last?.midi !== undefined) {
       const y = height - ((last.midi - min) / (max - min)) * height;
-      context.fillStyle = '#f45128';
-      context.beginPath();
-      context.arc(width - 4, y, 5, 0, Math.PI * 2);
-      context.fill();
+      const x = width - (now - last.time) / 4000 * width;
+      if (x >= 0) {
+        context.fillStyle = '#f45128';
+        context.beginPath();
+        context.arc(Math.min(width - 4, x), y, 5, 0, Math.PI * 2);
+        context.fill();
+      }
     }
   }
 }
-

@@ -40,11 +40,13 @@ export class App {
     this.tone = new ReferenceTone((gated) => {
       this.gated = gated;
       this.session.setDetectorGated(gated);
-      this.setText('signal-state', gated ? 'REFERENCE PLAYING' : 'LISTENING');
+      const listeningState = this.currentState === 'running' ? 'LISTENING' : stateLabels[this.currentState];
+      this.setText('signal-state', gated ? 'REFERENCE PLAYING' : listeningState);
       this.root.classList.toggle('is-reference-playing', gated);
       if (gated) this.clearPitch('REFERENCE PLAYING');
+      else this.clearPitch(listeningState);
     });
-    this.piano = new PianoView(this.get('piano-keys'), this.tone, (range) => this.setText('octave-value', range.slice(1, 6)));
+    this.piano = new PianoView(this.get('piano-keys'), this.tone, (range) => this.setText('octave-value', octaveSummary(range)));
     this.trail = new PitchTrail(this.get<HTMLCanvasElement>('pitch-trail'));
     this.bindControls();
     this.updateSessionState('idle', 'Microphone audio stays on this device.');
@@ -134,7 +136,10 @@ export class App {
     this.get('engine-neural').classList.toggle('is-selected', source === 'neural');
     this.setText('engine-value', source === 'light' ? 'LIGHT DSP' : 'NEURAL');
     this.setText('footer-engine', `ENGINE: ${source === 'light' ? 'LIGHT DSP' : 'NEURAL'}`);
-    if (message) this.announce(message);
+    if (message) {
+      this.clearPitch(source === 'light' ? 'LIGHT ACTIVE' : 'NEURAL ACTIVE');
+      this.announce(message);
+    }
   }
 
   private updateNeural(progress: NeuralProgress): void {
@@ -161,6 +166,10 @@ export class App {
     if (!element) throw new Error(`Missing UI element #${id}`);
     return element;
   }
+}
+
+function octaveSummary(range: string): string {
+  return range.match(/\d+/g)?.join('–') ?? range;
 }
 
 function shellMarkup(): string {
@@ -233,7 +242,7 @@ function shellMarkup(): string {
           </dl>
           <div class="processing-note" id="device-processing">RAW PROCESSING REQUESTED</div>
           <p class="privacy-copy">AUDIO IS PROCESSED ON THIS DEVICE. PCM IS NOT UPLOADED OR SAVED.</p>
-          <p class="model-copy">NEURAL: SwiftF0 v0.1.1 · ONNX Runtime Web · MIT</p>
+          <p class="model-copy">NEURAL: SwiftF0 v0.1.1 · DSP REFINE · ONNX Runtime Web · MIT</p>
         </aside>
       </div>
 

@@ -111,4 +111,3 @@ const manifest = {
 await mkdir(publicDir, { recursive: true });
 await writeFile(join(publicDir, 'ai-manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
 console.log(`Neural assets: ${(manifest.total.rawBytes / 1_000_000).toFixed(2)} MB raw, ${(manifest.total.brotliBytes / 1_000_000).toFixed(2)} MB Brotli`);
-

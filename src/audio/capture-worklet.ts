@@ -73,4 +73,3 @@ class PitchCaptureProcessor extends AudioWorkletProcessor {
 }
 
 registerProcessor('pitch-capture', PitchCaptureProcessor);
-

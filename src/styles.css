@@ -138,4 +138,3 @@ footer { display: flex; justify-content: space-between; gap: 15px; margin-top: 1
   .function-pad, .engine-button, .mic-button, .piano-key { forced-color-adjust: auto; }
   .progress-track span, .level-track span, .meter-needle { background: Highlight; stroke: Highlight; }
 }
-

@@ -15,7 +15,7 @@ const fixture = (frequency: number, sampleRate = 48_000, harmonic = false) => {
 describe('Light pitch detector', () => {
   const detector = PitchDetector.forFloat32Array(LIGHT_FRAME_SIZE);
 
-  it.each([110, 220, 440, 880])('detects %i Hz within five cents', (frequency) => {
+  it.each([65.406, 110, 220, 440, 880, 1046.502])('detects %i Hz within five cents', (frequency) => {
     const result = analyzePitchWindow(fixture(frequency), 48_000, detector);
     expect(result.frequencyHz).not.toBeNull();
     expect(Math.abs(centsBetween(result.frequencyHz ?? 1, frequency) ?? 100)).toBeLessThan(5);

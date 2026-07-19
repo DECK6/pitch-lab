@@ -7,4 +7,3 @@ describe('reference keyboard frequencies', () => {
     expect(Math.abs(centsBetween(midiToFrequency(midi), expected) ?? 1)).toBeLessThan(0.1);
   });
 });
-
