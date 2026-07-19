@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.vite/
+coverage/
+playwright-report/
+test-results/
+src/assets/swiftf0/model.onnx
+*.log
+.DS_Store
+
