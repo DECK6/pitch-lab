@@ -56,7 +56,7 @@ button.function-pad { cursor: pointer; }
 .piano-meta div { display: flex; flex-direction: column; gap: 4px; }
 .piano-meta small { color: var(--muted); font-size: 0.65rem; }
 .pill { padding: 5px 8px; color: #fff; background: #2b2c28; border-radius: 999px; font-size: 0.64rem; white-space: nowrap; }
-.piano-performance { display: grid; grid-template-columns: 96px minmax(0, 1fr); min-width: 0; }
+.piano-performance { --white-key-height: 224px; --black-key-height: 144px; display: grid; grid-template-columns: 96px minmax(0, 1fr); min-width: 0; }
 .pitch-modulation { min-height: 158px; display: flex; flex-direction: column; align-items: center; gap: 7px; padding: 9px 8px 8px; border-right: 1px solid var(--line); background: #d3d0c5; }
 .pitch-mod-heading { width: 100%; display: flex; justify-content: space-between; align-items: flex-start; gap: 4px; font-size: 0.59rem; line-height: 0.95; letter-spacing: 0.02em; }
 .pitch-mod-heading span { color: var(--muted); font-size: 0.47rem; writing-mode: vertical-rl; }
@@ -78,12 +78,12 @@ button.function-pad { cursor: pointer; }
 #pitch-mod-value { min-width: 76px; padding: 4px 3px; border: 1px solid #77776f; border-radius: 2px; background: var(--screen); color: #263126; font-size: 0.56rem; font-weight: 900; text-align: center; }
 .pitch-mod-key-hint { display: flex; align-items: center; gap: 3px; color: var(--muted); font-size: 0.48rem; white-space: nowrap; }
 .piano-scroll { overflow-x: auto; overscroll-behavior-inline: contain; -webkit-overflow-scrolling: touch; padding: 10px; scrollbar-color: #595b53 #cbc8bd; }
-.piano-surface { position: relative; width: calc(var(--white-count) * 68px); min-width: calc(var(--white-count) * 68px); height: 138px; }
+.piano-surface { position: relative; width: calc(var(--white-count) * 68px); min-width: calc(var(--white-count) * 68px); height: var(--white-key-height); }
 .white-keys { display: flex; height: 100%; }
 .piano-key { user-select: none; touch-action: pan-x pan-y; cursor: pointer; }
-.white-key { width: 68px; height: 138px; flex: 0 0 68px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 3px; padding: 10px 2px; border: 1px solid var(--line); border-radius: 0 0 5px 5px; background: #f0ecdf; font-size: 0.68rem; }
-.black-key-slot { position: absolute; top: 0; width: 40px; height: 88px; z-index: 2; }
-.black-key { width: 40px; height: 88px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 3px; padding: 8px 1px; border: 1px solid #111; border-radius: 0 0 4px 4px; background: #242521; color: #fff; font-size: 0.58rem; box-shadow: 0 3px 0 #111; }
+.white-key { width: 68px; height: 100%; flex: 0 0 68px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 3px; padding: 10px 2px; border: 1px solid var(--line); border-radius: 0 0 5px 5px; background: #f0ecdf; font-size: 0.68rem; }
+.black-key-slot { position: absolute; top: 0; width: 40px; height: var(--black-key-height); z-index: 2; }
+.black-key { width: 40px; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 3px; padding: 8px 1px; border: 1px solid #111; border-radius: 0 0 4px 4px; background: #242521; color: #fff; font-size: 0.58rem; box-shadow: 0 3px 0 #111; }
 .piano-key kbd { min-width: 17px; padding: 1px 3px; border: 1px solid currentColor; border-radius: 2px; background: transparent; font: inherit; font-size: 0.52rem; line-height: 1.15; text-align: center; opacity: 0.72; }
 .piano-key.is-active { background: var(--orange); color: #151612; transform: translateY(2px); box-shadow: none; }
 .piano-key.is-chord-tone:not(.is-active) { box-shadow: inset 0 -7px 0 var(--blue); }
@@ -164,7 +164,7 @@ footer { display: flex; justify-content: space-between; gap: 15px; margin-top: 1
   .diagnostic-grid { padding: 0 10px; }
   .piano-meta { align-items: flex-start; }
   .piano-meta small { max-width: 220px; }
-  .piano-performance { grid-template-columns: 82px minmax(0, 1fr); }
+  .piano-performance { --white-key-height: 260px; --black-key-height: 168px; grid-template-columns: 82px minmax(0, 1fr); }
   .pitch-modulation { padding-inline: 6px; }
   .pitch-mod-ranges { grid-template-columns: 1fr; }
   .pitch-mod-ranges button { min-height: 27px; }
