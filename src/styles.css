@@ -44,9 +44,10 @@ button.function-pad { cursor: pointer; }
 .function-pad small, .input-label small { font-size: 0.57rem; letter-spacing: 0.04em; }
 .yellow { background: var(--yellow); } .orange { background: var(--orange); } .blue { background: var(--blue); } .mint { background: var(--mint); } .pink { background: var(--pink); }
 .octave-pad { gap: 5px; }
-.octave-stepper { display: grid; grid-template-columns: 28px minmax(28px, 1fr) 28px; align-items: center; gap: 3px; }
-.octave-stepper button { width: 28px; min-height: 27px; padding: 0; border: 1px solid var(--line); border-radius: 3px; background: #dce9df; font-weight: 900; line-height: 1; cursor: pointer; }
-.octave-stepper small { text-align: center; }
+.octave-key-status { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.octave-key-status > small:first-child { font-size: 0.7rem; font-weight: 900; }
+.octave-key-hint { white-space: nowrap; color: #33463d; }
+.octave-key-hint kbd, .pitch-mod-key-hint kbd { min-width: 18px; display: inline-grid; place-items: center; padding: 1px 3px; border: 1px solid currentColor; border-radius: 2px; background: rgb(255 255 255 / 34%); font: inherit; font-weight: 900; }
 
 .panel { border: 1.5px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--paper); }
 .panel-head { min-height: 36px; display: flex; justify-content: space-between; align-items: center; padding: 0 13px; border-bottom: 1px solid var(--line); background: #d4d0c4; font-size: 0.68rem; letter-spacing: 0.03em; }
@@ -55,18 +56,27 @@ button.function-pad { cursor: pointer; }
 .piano-meta div { display: flex; flex-direction: column; gap: 4px; }
 .piano-meta small { color: var(--muted); font-size: 0.65rem; }
 .pill { padding: 5px 8px; color: #fff; background: #2b2c28; border-radius: 999px; font-size: 0.64rem; white-space: nowrap; }
-.pitch-modulation { padding: 9px 13px 11px; border-bottom: 1px solid var(--line); background: #ddd9cc; }
-.pitch-mod-heading { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 7px; font-size: 0.65rem; }
-.pitch-mod-heading output { min-width: 72px; color: var(--muted); text-align: right; }
-.pitch-mod-controls { display: grid; grid-template-columns: auto minmax(140px, 1fr) auto; align-items: center; gap: 10px; }
-.pitch-mod-ranges { display: flex; gap: 4px; }
-.pitch-mod-controls button { min-height: 34px; padding: 0 9px; border: 1px solid var(--line); border-radius: 3px; background: var(--paper); font-size: 0.6rem; font-weight: 900; cursor: pointer; }
+.piano-performance { display: grid; grid-template-columns: 96px minmax(0, 1fr); min-width: 0; }
+.pitch-modulation { min-height: 158px; display: flex; flex-direction: column; align-items: center; gap: 7px; padding: 9px 8px 8px; border-right: 1px solid var(--line); background: #d3d0c5; }
+.pitch-mod-heading { width: 100%; display: flex; justify-content: space-between; align-items: flex-start; gap: 4px; font-size: 0.59rem; line-height: 0.95; letter-spacing: 0.02em; }
+.pitch-mod-heading span { color: var(--muted); font-size: 0.47rem; writing-mode: vertical-rl; }
+.pitch-mod-ranges { width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 3px; }
+.pitch-mod-ranges button { min-height: 25px; padding: 0 2px; border: 1px solid var(--line); border-radius: 2px; background: var(--paper); font-size: 0.49rem; font-weight: 900; cursor: pointer; }
 .pitch-mod-ranges button[aria-pressed="true"] { background: var(--blue); color: #fff; box-shadow: inset 0 -3px 0 #345f84; }
-#pitch-mod-control { --pitch-mod-low: 50%; --pitch-mod-high: 50%; width: 100%; height: 34px; margin: 0; appearance: none; background: transparent; cursor: ew-resize; }
-#pitch-mod-control::-webkit-slider-runnable-track { height: 9px; border: 1px solid var(--line); background: linear-gradient(90deg, #f0ecdf 0 var(--pitch-mod-low), var(--blue) var(--pitch-mod-low) var(--pitch-mod-high), #f0ecdf var(--pitch-mod-high) 100%); box-shadow: inset 0 0 0 3px #d8d4c7; }
-#pitch-mod-control::-webkit-slider-thumb { width: 20px; height: 30px; margin-top: -11px; appearance: none; border: 1.5px solid var(--line); border-radius: 3px; background: var(--orange); box-shadow: 0 2px 0 var(--line); }
-#pitch-mod-control::-moz-range-track { height: 7px; border: 1px solid var(--line); background: linear-gradient(90deg, #f0ecdf 0 var(--pitch-mod-low), var(--blue) var(--pitch-mod-low) var(--pitch-mod-high), #f0ecdf var(--pitch-mod-high) 100%); }
-#pitch-mod-control::-moz-range-thumb { width: 20px; height: 28px; border: 1.5px solid var(--line); border-radius: 3px; background: var(--orange); box-shadow: 0 2px 0 var(--line); }
+.pitch-mod-wheel-stage { position: relative; width: 48px; height: 112px; flex: 0 0 112px; overflow: hidden; border: 1.5px solid var(--line); border-radius: 24px; background: #a9a79f; box-shadow: inset 0 0 0 5px #c5c2b8, inset 0 7px 10px rgb(0 0 0 / 18%), inset 0 -7px 10px rgb(255 255 255 / 24%); }
+.pitch-mod-wheel-stage::before { content: ""; position: absolute; z-index: 1; left: 4px; right: 4px; top: 50%; border-top: 1px solid #6f6e68; pointer-events: none; }
+.wheel-mark { position: absolute; z-index: 3; right: 5px; color: #565750; font-size: 0.55rem; font-weight: 900; line-height: 1; pointer-events: none; }
+.wheel-mark-up { top: 8px; }
+.wheel-mark-center { top: 50%; transform: translateY(-50%); color: var(--orange); }
+.wheel-mark-down { bottom: 8px; }
+#pitch-mod-control { --pitch-mod-low: 50%; --pitch-mod-high: 50%; position: absolute; z-index: 2; left: 50%; top: 50%; width: 94px; height: 30px; margin: 0; transform: translate(-50%, -50%) rotate(-90deg); appearance: none; background: transparent; touch-action: none; cursor: ns-resize; }
+#pitch-mod-control:focus-visible { outline: 2px solid #fff; outline-offset: 2px; filter: drop-shadow(0 0 0.5px #111) drop-shadow(0 0 2px #111); }
+#pitch-mod-control::-webkit-slider-runnable-track { height: 12px; border: 1px solid var(--line); border-radius: 8px; background: linear-gradient(90deg, #696a63 0 var(--pitch-mod-low), var(--orange) var(--pitch-mod-low) var(--pitch-mod-high), #696a63 var(--pitch-mod-high) 100%); box-shadow: inset 0 0 0 3px #3d3e39; }
+#pitch-mod-control::-webkit-slider-thumb { width: 25px; height: 31px; margin-top: -10.5px; appearance: none; border: 1.5px solid #10110f; border-radius: 4px; background: repeating-linear-gradient(90deg, #20211e 0 3px, #41423c 3px 5px); box-shadow: 2px 0 0 #10110f, inset 0 0 0 2px #52534c; }
+#pitch-mod-control::-moz-range-track { height: 10px; border: 1px solid var(--line); border-radius: 8px; background: linear-gradient(90deg, #696a63 0 var(--pitch-mod-low), var(--orange) var(--pitch-mod-low) var(--pitch-mod-high), #696a63 var(--pitch-mod-high) 100%); box-shadow: inset 0 0 0 3px #3d3e39; }
+#pitch-mod-control::-moz-range-thumb { width: 25px; height: 29px; border: 1.5px solid #10110f; border-radius: 4px; background: repeating-linear-gradient(90deg, #20211e 0 3px, #41423c 3px 5px); box-shadow: 2px 0 0 #10110f, inset 0 0 0 2px #52534c; }
+#pitch-mod-value { min-width: 76px; padding: 4px 3px; border: 1px solid #77776f; border-radius: 2px; background: var(--screen); color: #263126; font-size: 0.56rem; font-weight: 900; text-align: center; }
+.pitch-mod-key-hint { display: flex; align-items: center; gap: 3px; color: var(--muted); font-size: 0.48rem; white-space: nowrap; }
 .piano-scroll { overflow-x: auto; overscroll-behavior-inline: contain; -webkit-overflow-scrolling: touch; padding: 10px; scrollbar-color: #595b53 #cbc8bd; }
 .piano-surface { position: relative; width: calc(var(--white-count) * 68px); min-width: calc(var(--white-count) * 68px); height: 138px; }
 .white-keys { display: flex; height: 100%; }
@@ -154,10 +164,10 @@ footer { display: flex; justify-content: space-between; gap: 15px; margin-top: 1
   .diagnostic-grid { padding: 0 10px; }
   .piano-meta { align-items: flex-start; }
   .piano-meta small { max-width: 220px; }
-  .pitch-mod-controls { grid-template-columns: 1fr auto; gap: 7px; }
-  .pitch-mod-ranges { grid-column: 1 / -1; }
-  .pitch-mod-ranges button { flex: 1; min-height: 38px; }
-  #pitch-mod-center { min-height: 38px; }
+  .piano-performance { grid-template-columns: 82px minmax(0, 1fr); }
+  .pitch-modulation { padding-inline: 6px; }
+  .pitch-mod-ranges { grid-template-columns: 1fr; }
+  .pitch-mod-ranges button { min-height: 27px; }
   footer { flex-direction: column; gap: 3px; }
 }
 
@@ -166,6 +176,6 @@ footer { display: flex; justify-content: space-between; gap: 15px; margin-top: 1
 }
 
 @media (forced-colors: active) {
-  .function-pad, .engine-button, .mic-button, .piano-key, .pitch-mod-controls button, #pitch-mod-control { forced-color-adjust: auto; }
+  .function-pad, .engine-button, .mic-button, .piano-key, .pitch-mod-ranges button, #pitch-mod-control { forced-color-adjust: auto; }
   .progress-track span, .level-track span, .meter-needle { background: Highlight; stroke: Highlight; }
 }
