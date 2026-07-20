@@ -168,6 +168,9 @@ test('vertical spring pitch wheel is shared by Tuning and Practice with arrow-ke
   const wheelBox = await wheel.boundingBox();
   expect(wheelBox?.height).toBeGreaterThan((wheelBox?.width ?? 0) * 1.5);
   expect(await wheel.evaluate((element) => getComputedStyle(element).touchAction)).toBe('none');
+  const modulationBox = await modulation.boundingBox();
+  const pianoSurfaceBox = await page.locator('.piano-surface').boundingBox();
+  expect(pianoSurfaceBox?.height).toBeGreaterThanOrEqual((modulationBox?.height ?? 0) * 0.9);
   await expect(page.locator('#pitch-mod-value')).toHaveText('±0 cent');
 
   await page.keyboard.down('ArrowUp');
