@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   buildHarmonyCatalog,
   createKeyContext,
+  midiForSpelling,
+  octaveForMidiSpelling,
   pitchClassForSpelling,
   type ScaleMode,
 } from '../src/music/theory/harmony';
@@ -14,6 +16,13 @@ describe('key-aware harmony engine', () => {
     [9, 'natural_minor', ['A', 'B', 'C', 'D', 'E', 'F', 'G']],
   ] as const)('spells pitch class %i %s correctly', (pitchClass, mode, expected) => {
     expect(createKeyContext(pitchClass, mode).scaleNoteNames).toEqual(expected);
+  });
+
+  it('keeps written octaves correct when accidentals cross C', () => {
+    expect(midiForSpelling('B♯', 4)).toBe(72);
+    expect(midiForSpelling('C♭', 4)).toBe(59);
+    expect(octaveForMidiSpelling(72, 'B♯')).toBe(4);
+    expect(octaveForMidiSpelling(59, 'C♭')).toBe(4);
   });
 
   it('builds the complete C-major core and explainable related chords', () => {

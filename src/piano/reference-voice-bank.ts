@@ -46,6 +46,7 @@ export class ReferenceVoiceBank {
   private master: GainNode | null = null;
   private limiter: DynamicsCompressorNode | null = null;
   private readonly voices = new Set<Voice>();
+  private readonly pendingMidis = new Set<number>();
   private gateTimer: number | null = null;
   private safetyTimer: number | null = null;
   private generation = 0;
@@ -68,12 +69,13 @@ export class ReferenceVoiceBank {
   async playArpeggio(midis: number[], stepMs = 145, durationMs = 1_350): Promise<void> {
     const selected = midis.slice(0, MAX_REFERENCE_VOICES);
     if (selected.length === 0) return;
-    const generation = this.beginPlayback();
+    const generation = this.beginPlayback(selected);
     try {
       const context = await this.ensureContext();
       if (generation !== this.generation) return;
       if (context.state === 'suspended') await context.resume();
       if (generation !== this.generation) return;
+      this.pendingMidis.clear();
       this.setGate(true);
       const startAt = context.currentTime;
       const releaseAt = startAt + durationMs / 1000;
@@ -88,8 +90,10 @@ export class ReferenceVoiceBank {
 
   release(midi?: number): void {
     const matching = [...this.voices].filter((voice) => midi === undefined || voice.midi === midi);
-    if (matching.length === 0 && midi !== undefined) return;
+    const pending = midi === undefined ? this.pendingMidis.size > 0 : this.pendingMidis.has(Math.round(midi));
+    if (matching.length === 0 && !pending && midi !== undefined) return;
     this.generation += 1;
+    this.pendingMidis.clear();
     this.clearTimers();
     const context = this.context;
     if (context) matching.forEach((voice) => this.releaseVoice(voice, context.currentTime));
@@ -102,6 +106,7 @@ export class ReferenceVoiceBank {
 
   async dispose(): Promise<void> {
     this.generation += 1;
+    this.pendingMidis.clear();
     this.clearTimers();
     const context = this.context;
     if (context) [...this.voices].forEach((voice) => this.releaseVoice(voice, context.currentTime, 0.01));
@@ -119,12 +124,13 @@ export class ReferenceVoiceBank {
     const selected = [...new Set(midis.map(Math.round))].slice(0, MAX_REFERENCE_VOICES);
     if (selected.length === 0) return;
     const hadVoices = this.voices.size > 0;
-    const generation = this.beginPlayback();
+    const generation = this.beginPlayback(selected);
     try {
       const context = await this.ensureContext();
       if (generation !== this.generation) return;
       if (context.state === 'suspended') await context.resume();
       if (generation !== this.generation) return;
+      this.pendingMidis.clear();
       this.setGate(true);
       const startAt = context.currentTime + referenceToneStartDelay(hadVoices);
       const releaseAt = durationMs > 0 ? startAt + durationMs / 1000 : null;
@@ -138,8 +144,10 @@ export class ReferenceVoiceBank {
     }
   }
 
-  private beginPlayback(): number {
+  private beginPlayback(midis: number[]): number {
     const generation = ++this.generation;
+    this.pendingMidis.clear();
+    midis.forEach((midi) => this.pendingMidis.add(midi));
     this.clearTimers();
     const context = this.context;
     if (context) [...this.voices].forEach((voice) => this.releaseVoice(voice, context.currentTime, REFERENCE_TONE_SWITCH_SECONDS));

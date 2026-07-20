@@ -56,6 +56,24 @@ class FakeAudioContext {
   async close(): Promise<void> { this.state = 'closed'; }
 }
 
+class SuspendedFakeAudioContext extends FakeAudioContext {
+  state: AudioContextState = 'suspended';
+  private finishResume!: () => void;
+  private markResumeRequested!: () => void;
+  readonly resumeRequested = new Promise<void>((resolve) => { this.markResumeRequested = resolve; });
+  private readonly resumeFinished = new Promise<void>((resolve) => { this.finishResume = resolve; });
+
+  async resume(): Promise<void> {
+    this.markResumeRequested();
+    await this.resumeFinished;
+    this.state = 'running';
+  }
+
+  resolveResume(): void {
+    this.finishResume();
+  }
+}
+
 afterEach(() => vi.unstubAllGlobals());
 
 describe('reference voice-bank helpers', () => {
@@ -95,5 +113,23 @@ describe('reference voice-bank helpers', () => {
 
     await bank.dispose();
     expect(gates.at(-1)).toBe(false);
+  });
+
+  it('does not start a tone after the key is released during context resume', async () => {
+    const context = new SuspendedFakeAudioContext();
+    vi.stubGlobal('window', { setTimeout, clearTimeout });
+    vi.stubGlobal('AudioContext', class { constructor() { return context; } });
+    const gates: boolean[] = [];
+    const bank = new ReferenceVoiceBank((gated) => gates.push(gated));
+
+    const playback = bank.play(60);
+    await context.resumeRequested;
+    bank.release(60);
+    context.resolveResume();
+    await playback;
+
+    expect(context.oscillators).toHaveLength(0);
+    expect(gates).toEqual([]);
+    await bank.dispose();
   });
 });

@@ -4,6 +4,8 @@ import {
   buildHarmonyCatalog,
   createKeyContext,
   KEY_OPTIONS,
+  midiForSpelling,
+  octaveForMidiSpelling,
   type ChordSuggestion,
   type ChordView,
   type HarmonyCatalog,
@@ -268,13 +270,13 @@ export class PracticeWorkspace {
   }
 
   private rootMidi(): number {
-    const pitchClass = this.selectedChord.pitchClasses[0] ?? 0;
-    return (this.settings.targetOctave + 1) * 12 + pitchClass;
+    const spelling = this.selectedChord.noteNames[0] ?? 'C';
+    return midiForSpelling(spelling, this.settings.targetOctave);
   }
 
   private targetMidi(): number {
-    const pitchClass = this.selectedChord.pitchClasses[this.settings.targetToneIndex] ?? this.selectedChord.pitchClasses[0] ?? 0;
-    return (this.settings.targetOctave + 1) * 12 + pitchClass;
+    const spelling = this.selectedChord.noteNames[this.settings.targetToneIndex] ?? this.selectedChord.noteNames[0] ?? 'C';
+    return midiForSpelling(spelling, this.settings.targetOctave);
   }
 
   private applyPianoHighlights(): void {
@@ -313,7 +315,7 @@ export class PracticeWorkspace {
     const spelling = this.selectedChord.noteNames[chordIndex]
       ?? this.catalog.key.scaleNoteNames[scaleIndex];
     if (!spelling) return noteNameForMidi(midi);
-    return `${spelling}${Math.floor(midi / 12) - 1}`;
+    return `${spelling}${octaveForMidiSpelling(midi, spelling)}`;
   }
 
   private showAudioError(): void {

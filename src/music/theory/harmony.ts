@@ -99,15 +99,27 @@ function spellPitchClass(pitchClass: number, letterIndex: number): string {
 }
 
 export function pitchClassForSpelling(spelling: string): number {
+  return normalizePitchClass(semitoneForSpelling(spelling));
+}
+
+export function midiForSpelling(spelling: string, octave: number): number {
+  return (Math.round(octave) + 1) * 12 + semitoneForSpelling(spelling);
+}
+
+export function octaveForMidiSpelling(midi: number, spelling: string): number {
+  return Math.round((Math.round(midi) - semitoneForSpelling(spelling)) / 12) - 1;
+}
+
+function semitoneForSpelling(spelling: string): number {
   const letterIndex = letterIndexForName(spelling);
-  let pitchClass = NATURAL_PITCH_CLASSES[letterIndex] ?? 0;
+  let semitone = NATURAL_PITCH_CLASSES[letterIndex] ?? 0;
   for (const accidental of spelling.slice(1)) {
-    if (accidental === '♯' || accidental === '#') pitchClass += 1;
-    else if (accidental === '♭' || accidental === 'b') pitchClass -= 1;
-    else if (accidental === '𝄪') pitchClass += 2;
-    else if (accidental === '𝄫') pitchClass -= 2;
+    if (accidental === '♯' || accidental === '#') semitone += 1;
+    else if (accidental === '♭' || accidental === 'b') semitone -= 1;
+    else if (accidental === '𝄪') semitone += 2;
+    else if (accidental === '𝄫') semitone -= 2;
   }
-  return normalizePitchClass(pitchClass);
+  return semitone;
 }
 
 export function createKeyContext(tonicPitchClass: number, mode: ScaleMode): KeyContext {
