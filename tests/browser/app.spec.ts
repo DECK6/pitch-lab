@@ -16,8 +16,17 @@ test('starts private, Light, and without Neural network requests', async ({ page
   expect(pageErrors).toEqual([]);
 });
 
-test('reference keyboard is touch-sized and updates octave range', async ({ page }) => {
+test('reference keyboard spans three octaves, supports ASDF controls, and updates its range', async ({ page }) => {
   await page.goto('/');
+  await expect(page.locator('.piano-key')).toHaveCount(36);
+  await expect(page.locator('.piano-key[data-midi="83"]')).toBeAttached();
+  const keyboardC4 = page.locator('.piano-key[data-midi="60"]');
+  await expect(keyboardC4.locator('kbd')).toHaveText('A');
+  await page.keyboard.down('a');
+  await expect(keyboardC4).toHaveClass(/is-active/);
+  await page.keyboard.up('a');
+  await expect(keyboardC4).not.toHaveClass(/is-active/);
+
   const a4 = page.getByRole('button', { name: /A4, 440\.00 hertz/ });
   await expect(a4).toBeVisible();
   const box = await a4.boundingBox();
@@ -27,8 +36,8 @@ test('reference keyboard is touch-sized and updates octave range', async ({ page
   await expect(page.locator('#signal-state')).toHaveText('MIC OFF', { timeout: 2_000 });
   await expect(page.locator('#tuning-state')).toHaveText('MIC OFF');
   await page.getByRole('button', { name: /OCTAVE/ }).click();
-  await expect(page.getByText('C4–B5')).toBeVisible();
-  await expect(page.getByRole('button', { name: /OCTAVE 4–5/ })).toBeVisible();
+  await expect(page.getByText('C4–B6')).toBeVisible();
+  await expect(page.getByRole('button', { name: /OCTAVE 4–6/ })).toBeVisible();
 });
 
 test('mobile layout does not overflow the viewport', async ({ page }, testInfo) => {
@@ -51,6 +60,7 @@ test('mobile keyboard scrolls horizontally when swiping across keys', async ({ p
   expect(dimensions.scrollWidth).toBeGreaterThan(dimensions.clientWidth);
   expect(dimensions.touchAction).toBe('pan-x pan-y');
 
+  await piano.evaluate((element) => { element.scrollLeft = 0; });
   const key = page.locator('.white-key').nth(3);
   const box = await key.boundingBox();
   expect(box).not.toBeNull();

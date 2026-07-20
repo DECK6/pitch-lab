@@ -205,14 +205,14 @@ function shellMarkup(): string {
         <div class="function-pad yellow"><strong>TUNER</strong><small>FREE INPUT</small></div>
         <div class="function-pad orange"><strong>METER</strong><small>CENTS</small></div>
         <div class="function-pad blue"><strong>ENGINE</strong><small id="engine-value">LIGHT DSP</small></div>
-        <button id="octave-button" class="function-pad mint" type="button"><strong>OCTAVE</strong><small id="octave-value">3–4</small></button>
+        <button id="octave-button" class="function-pad mint" type="button"><strong>OCTAVE</strong><small id="octave-value">3–5</small></button>
         <div class="function-pad pink"><strong>TRAIL</strong><small>4 SEC</small></div>
       </div>
 
       <section class="panel piano-panel" aria-labelledby="piano-title">
         <div class="panel-head"><strong id="piano-title">03 / REFERENCE PIANO</strong><span aria-hidden="true">○</span></div>
-        <div class="piano-meta"><div><strong id="reference-range">C3–B4</strong><small>TWO OCTAVE · SWIPE / SCROLL · BRIGHT TRIANGLE · USE HEADPHONES TO SING ALONG</small></div><span class="pill">BRIGHT TONE</span></div>
-        <div id="piano-keys" class="piano-scroll" aria-label="Two octave reference keyboard"></div>
+        <div class="piano-meta"><div><strong id="reference-range">C3–B5</strong><small>THREE OCTAVE · ASDF = CENTER OCTAVE · SWIPE / SCROLL</small></div><span class="pill">BRIGHT TONE</span></div>
+        <div id="piano-keys" class="piano-scroll" aria-label="Three octave reference keyboard"></div>
       </section>
 
       <div class="main-grid">

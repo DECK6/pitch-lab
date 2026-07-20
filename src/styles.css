@@ -50,9 +50,10 @@ button.function-pad { cursor: pointer; }
 .piano-surface { position: relative; width: calc(var(--white-count) * 68px); min-width: calc(var(--white-count) * 68px); height: 138px; }
 .white-keys { display: flex; height: 100%; }
 .piano-key { user-select: none; touch-action: pan-x pan-y; cursor: pointer; }
-.white-key { width: 68px; height: 138px; flex: 0 0 68px; display: flex; align-items: flex-end; justify-content: center; padding: 10px 2px; border: 1px solid var(--line); border-radius: 0 0 5px 5px; background: #f0ecdf; font-size: 0.68rem; }
+.white-key { width: 68px; height: 138px; flex: 0 0 68px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 3px; padding: 10px 2px; border: 1px solid var(--line); border-radius: 0 0 5px 5px; background: #f0ecdf; font-size: 0.68rem; }
 .black-key-slot { position: absolute; top: 0; width: 40px; height: 88px; z-index: 2; }
-.black-key { width: 40px; height: 88px; display: flex; align-items: flex-end; justify-content: center; padding: 8px 1px; border: 1px solid #111; border-radius: 0 0 4px 4px; background: #242521; color: #fff; font-size: 0.58rem; box-shadow: 0 3px 0 #111; }
+.black-key { width: 40px; height: 88px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 3px; padding: 8px 1px; border: 1px solid #111; border-radius: 0 0 4px 4px; background: #242521; color: #fff; font-size: 0.58rem; box-shadow: 0 3px 0 #111; }
+.piano-key kbd { min-width: 17px; padding: 1px 3px; border: 1px solid currentColor; border-radius: 2px; background: transparent; font: inherit; font-size: 0.52rem; line-height: 1.15; text-align: center; opacity: 0.72; }
 .piano-key.is-active { background: var(--orange); color: #151612; transform: translateY(2px); box-shadow: none; }
 
 .main-grid { display: grid; grid-template-columns: minmax(0, 1.82fr) minmax(280px, 1fr); gap: 14px; margin-top: 14px; }
