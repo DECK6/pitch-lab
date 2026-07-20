@@ -258,15 +258,22 @@ export class PracticeWorkspace {
   }
 
   private async playRoot(): Promise<void> {
+    this.piano.releaseActive();
     await this.tone.playRoot(this.rootMidi()).catch(() => this.showAudioError());
   }
 
   private async playArpeggio(): Promise<void> {
-    await this.tone.playArpeggio(pitchClassesToVoicing(this.selectedChord.pitchClasses)).catch(() => this.showAudioError());
+    this.piano.releaseActive();
+    await this.tone.playArpeggio(this.chordVoicing()).catch(() => this.showAudioError());
   }
 
   private async playChord(): Promise<void> {
-    await this.tone.playChord(pitchClassesToVoicing(this.selectedChord.pitchClasses)).catch(() => this.showAudioError());
+    this.piano.releaseActive();
+    await this.tone.playChord(this.chordVoicing()).catch(() => this.showAudioError());
+  }
+
+  private chordVoicing(): number[] {
+    return pitchClassesToVoicing(this.selectedChord.pitchClasses, this.rootMidi());
   }
 
   private rootMidi(): number {

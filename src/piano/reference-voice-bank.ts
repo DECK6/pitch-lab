@@ -24,7 +24,7 @@ export function normalizedVoiceGain(voiceCount: number): number {
   return REFERENCE_TONE_GAIN / Math.sqrt(bounded);
 }
 
-export function pitchClassesToVoicing(pitchClasses: number[]): number[] {
+export function pitchClassesToVoicing(pitchClasses: number[], anchorMidi?: number): number[] {
   const unique: number[] = [];
   for (const pitchClass of pitchClasses) {
     const normalized = ((Math.round(pitchClass) % 12) + 12) % 12;
@@ -32,10 +32,12 @@ export function pitchClassesToVoicing(pitchClasses: number[]): number[] {
     if (unique.length === MAX_REFERENCE_VOICES) break;
   }
   if (unique.length === 0) return [];
-  const rootMidi = 48 + (unique[0] ?? 0);
+  const defaultRootMidi = 48 + (unique[0] ?? 0);
+  const rootMidi = Number.isFinite(anchorMidi) ? Math.round(anchorMidi!) : defaultRootMidi;
+  const octaveBase = rootMidi - ((rootMidi % 12) + 12) % 12;
   let previous = rootMidi - 1;
   return unique.map((pitchClass) => {
-    let midi = 48 + pitchClass;
+    let midi = octaveBase + pitchClass;
     while (midi <= previous) midi += 12;
     previous = midi;
     return midi;

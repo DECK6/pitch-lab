@@ -88,6 +88,8 @@ describe('reference voice-bank helpers', () => {
   it('creates an ascending compact voicing from ordered pitch classes', () => {
     expect(pitchClassesToVoicing([0, 4, 7, 11])).toEqual([48, 52, 55, 59]);
     expect(pitchClassesToVoicing([9, 0, 4, 7])).toEqual([57, 60, 64, 67]);
+    expect(pitchClassesToVoicing([0, 4, 7, 11], 60)).toEqual([60, 64, 67, 71]);
+    expect(pitchClassesToVoicing([9, 0, 4, 7], 69)).toEqual([69, 72, 76, 79]);
   });
 
   it('deduplicates and caps voices without changing chord order', () => {

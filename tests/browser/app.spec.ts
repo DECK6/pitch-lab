@@ -79,7 +79,12 @@ test('chord audition gates grading and returns to listening after its release ta
   test.skip(testInfo.project.name !== 'desktop-chromium');
   await page.goto('/');
   await page.getByRole('tab', { name: 'PRACTICE' }).click();
+  const keyboardC4 = page.locator('.piano-key[data-midi="60"]');
+  await page.keyboard.down('a');
+  await expect(keyboardC4).toHaveClass(/is-active/);
   await page.getByRole('button', { name: '▶ CHORD' }).click();
+  await expect(keyboardC4).not.toHaveClass(/is-active/);
+  await page.keyboard.up('a');
   await expect(page.locator('#app')).toHaveClass(/is-reference-playing/);
   await expect(page.locator('.piano-key')).toHaveCount(36);
   await expect(page.locator('#app')).not.toHaveClass(/is-reference-playing/, { timeout: 3_000 });
