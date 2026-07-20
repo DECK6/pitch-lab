@@ -22,6 +22,7 @@ class FakeNode {
 
 class FakeOscillator extends FakeNode {
   readonly frequency = new FakeAudioParam();
+  readonly detune = new FakeAudioParam();
   type: OscillatorType = 'sine';
   started = false;
   readonly stopTimes: number[] = [];
@@ -130,6 +131,60 @@ describe('reference voice-bank helpers', () => {
 
     expect(context.oscillators).toHaveLength(0);
     expect(gates).toEqual([]);
+    await bank.dispose();
+  });
+
+  it('holds simultaneous keyboard voices and releases only the requested note', async () => {
+    const context = new FakeAudioContext();
+    vi.stubGlobal('window', { setTimeout, clearTimeout });
+    vi.stubGlobal('AudioContext', class { constructor() { return context; } });
+    const bank = new ReferenceVoiceBank(() => undefined);
+
+    await bank.play(60);
+    await bank.play(64);
+
+    expect(context.oscillators).toHaveLength(2);
+    expect(context.oscillators[0]?.stopTimes).toHaveLength(0);
+    expect(context.oscillators[1]?.stopTimes).toHaveLength(0);
+
+    bank.release(60);
+    expect(context.oscillators[0]?.stopTimes).toHaveLength(1);
+    expect(context.oscillators[1]?.stopTimes).toHaveLength(0);
+
+    bank.release(64);
+    expect(context.oscillators[1]?.stopTimes).toHaveLength(1);
+    await bank.dispose();
+  });
+
+  it('applies pitch modulation to sounding voices and voices started later', async () => {
+    const context = new FakeAudioContext();
+    vi.stubGlobal('window', { setTimeout, clearTimeout });
+    vi.stubGlobal('AudioContext', class { constructor() { return context; } });
+    const bank = new ReferenceVoiceBank(() => undefined);
+
+    await bank.play(60);
+    bank.setPitchBend(175);
+    expect(context.oscillators[0]?.detune.value).toBe(175);
+
+    await bank.play(64);
+    expect(context.oscillators[1]?.detune.value).toBe(175);
+    bank.setPitchBend(0);
+    expect(context.oscillators.every((oscillator) => oscillator.detune.value === 0)).toBe(true);
+    await bank.dispose();
+  });
+
+  it('caps held keyboard polyphony and accepts another note after one is released', async () => {
+    const context = new FakeAudioContext();
+    vi.stubGlobal('window', { setTimeout, clearTimeout });
+    vi.stubGlobal('AudioContext', class { constructor() { return context; } });
+    const bank = new ReferenceVoiceBank(() => undefined);
+
+    for (let midi = 60; midi < 60 + MAX_REFERENCE_VOICES + 1; midi += 1) await bank.play(midi);
+    expect(context.oscillators).toHaveLength(MAX_REFERENCE_VOICES);
+
+    bank.release(60);
+    await bank.play(72);
+    expect(context.oscillators).toHaveLength(MAX_REFERENCE_VOICES + 1);
     await bank.dispose();
   });
 });

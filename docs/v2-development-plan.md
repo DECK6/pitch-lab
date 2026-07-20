@@ -149,6 +149,7 @@ P1 does not add a production dependency. The theory surface is small enough to i
 - Switching modes never restarts a live mic or downloads Neural assets.
 - All 24 major/minor key contexts produce correct note spelling, seven core chords, color options, and related options.
 - Chord playback has no clipping, stuck voices, or mic self-grading.
+- The shared piano supports six held notes, independent key release, ±2/±12-semitone pitch modulation with global `↑`/`↓` control, and `−`/`+` octave stepping in both modes.
 - A singer can select any chord tone and receive stable target/actual/cents feedback.
 - Keyboard and chord lanes scroll horizontally on mobile without blocking vertical page scroll.
 - Initial TUNING graph: target ≤ 75 KB raw / 25 KB Brotli; hard cap ≤ 110 KB raw / 40 KB Brotli.

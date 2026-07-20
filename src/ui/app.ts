@@ -66,7 +66,10 @@ export class App {
         this.practice?.reset(listeningState);
       }
     });
-    this.piano = new PianoView(this.get('piano-keys'), this.tone, (range) => this.setText('octave-value', octaveSummary(range)));
+    this.piano = new PianoView(this.get('piano-keys'), this.tone, (range) => {
+      this.setText('octave-value', octaveSummary(range));
+      this.setText('reference-range', range);
+    });
     this.trail = new PitchTrail(this.get<HTMLCanvasElement>('pitch-trail'));
     this.pianoPanel = this.get('reference-piano-panel');
     this.modeStore = new ModeStore();
@@ -89,10 +92,8 @@ export class App {
     this.get<HTMLButtonElement>('mode-tuning').addEventListener('click', () => this.modeStore.set('tuning'));
     this.get<HTMLButtonElement>('mode-practice').addEventListener('click', () => this.modeStore.set('practice'));
     this.root.querySelector('.mode-switch')?.addEventListener('keydown', (event) => this.handleModeKeydown(event as KeyboardEvent));
-    this.get<HTMLButtonElement>('octave-button').addEventListener('click', () => {
-      const range = this.piano.cycleOctave();
-      this.setText('reference-range', range);
-    });
+    this.get<HTMLButtonElement>('octave-down').addEventListener('click', () => this.piano.shiftOctave(-1));
+    this.get<HTMLButtonElement>('octave-up').addEventListener('click', () => this.piano.shiftOctave(1));
     window.addEventListener('pagehide', () => {
       void this.session.stop();
       void this.tone.dispose();
@@ -298,7 +299,14 @@ function shellMarkup(): string {
         <div class="function-pad yellow"><strong>WORK MODE</strong><small id="work-mode-value">FREE INPUT</small></div>
         <div class="function-pad orange"><strong>METER</strong><small>CENTS</small></div>
         <div class="function-pad blue"><strong>ENGINE</strong><small id="engine-value">LIGHT DSP</small></div>
-        <button id="octave-button" class="function-pad mint" type="button"><strong>OCTAVE</strong><small id="octave-value">3–5</small></button>
+        <div class="function-pad mint octave-pad" role="group" aria-label="Reference keyboard octave">
+          <strong>OCTAVE</strong>
+          <div class="octave-stepper">
+            <button id="octave-down" type="button" aria-label="Shift reference keyboard down one octave">−</button>
+            <small id="octave-value">3–5</small>
+            <button id="octave-up" type="button" aria-label="Shift reference keyboard up one octave">+</button>
+          </div>
+        </div>
         <div class="function-pad pink"><strong>TRAIL</strong><small>4 SEC</small></div>
       </div>
 
@@ -306,7 +314,18 @@ function shellMarkup(): string {
         <div id="tuning-piano-anchor">
           <section id="reference-piano-panel" class="panel piano-panel" aria-labelledby="piano-title">
             <div class="panel-head"><strong id="piano-title">03 / REFERENCE PIANO</strong><span aria-hidden="true">○</span></div>
-            <div class="piano-meta"><div><strong id="reference-range">C3–B5</strong><small>THREE OCTAVE · ASDF = CENTER OCTAVE · SWIPE / SCROLL</small></div><span class="pill">BRIGHT TONE</span></div>
+            <div class="piano-meta"><div><strong id="reference-range">C3–B5</strong><small>THREE OCTAVE · ASDF = CENTER OCTAVE · ↑↓ = PITCH MOD · SWIPE / SCROLL</small></div><span class="pill">BRIGHT TONE</span></div>
+            <div class="pitch-modulation" role="group" aria-label="Pitch modulation">
+              <div class="pitch-mod-heading"><strong>PITCH MOD</strong><output id="pitch-mod-value" for="pitch-mod-control">±0 cent</output></div>
+              <div class="pitch-mod-controls">
+                <div class="pitch-mod-ranges" aria-label="Pitch modulation range">
+                  <button type="button" data-pitch-range="2" aria-pressed="true" aria-label="Use two semitone pitch modulation range">±2 ST</button>
+                  <button type="button" data-pitch-range="12" aria-pressed="false" aria-label="Use twelve semitone pitch modulation range">±12 ST</button>
+                </div>
+                <input id="pitch-mod-control" type="range" min="-100" max="100" step="1" value="0" aria-label="Pitch modulation amount" aria-valuetext="±0 cent">
+                <button id="pitch-mod-center" type="button" aria-label="Center pitch modulation">CENTER</button>
+              </div>
+            </div>
             <div id="piano-keys" class="piano-scroll" aria-label="Three octave reference keyboard"></div>
           </section>
         </div>

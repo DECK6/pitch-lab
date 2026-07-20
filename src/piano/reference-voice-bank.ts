@@ -4,6 +4,7 @@ interface Voice {
   midi: number;
   oscillator: OscillatorNode;
   gain: GainNode;
+  held: boolean;
 }
 
 export const MAX_REFERENCE_VOICES = 6;
@@ -47,15 +48,47 @@ export class ReferenceVoiceBank {
   private limiter: DynamicsCompressorNode | null = null;
   private readonly voices = new Set<Voice>();
   private readonly pendingMidis = new Set<number>();
+  private readonly pendingHeldNotes = new Map<number, number>();
+  private readonly heldSafetyTimers = new Map<number, number>();
   private gateTimer: number | null = null;
   private safetyTimer: number | null = null;
   private generation = 0;
+  private heldToken = 0;
   private gated = false;
+  private pitchBendCents = 0;
 
   constructor(private readonly onGate: (gated: boolean) => void) {}
 
   async play(midi: number): Promise<void> {
-    await this.playVoicing([midi], 0);
+    const roundedMidi = Math.round(midi);
+    if (this.pendingHeldNotes.has(roundedMidi) || [...this.voices].some((voice) => voice.held && voice.midi === roundedMidi)) return;
+    this.interruptAudition();
+    if (this.voices.size + this.pendingHeldNotes.size >= MAX_REFERENCE_VOICES) return;
+    const token = ++this.heldToken;
+    this.pendingHeldNotes.set(roundedMidi, token);
+    try {
+      const context = await this.ensureContext();
+      if (this.pendingHeldNotes.get(roundedMidi) !== token) return;
+      if (context.state === 'suspended') await context.resume();
+      if (this.pendingHeldNotes.get(roundedMidi) !== token) return;
+      this.pendingHeldNotes.delete(roundedMidi);
+      if (this.voices.size >= MAX_REFERENCE_VOICES) return;
+      this.cancelGateOff();
+      this.setGate(true);
+      this.startVoice(context, roundedMidi, context.currentTime, null, normalizedVoiceGain(this.voices.size + 1), true);
+      this.clearHeldSafetyTimer(roundedMidi);
+      this.heldSafetyTimers.set(roundedMidi, window.setTimeout(() => this.release(roundedMidi), MAX_TONE_MS));
+    } catch (error) {
+      if (this.pendingHeldNotes.get(roundedMidi) === token) this.pendingHeldNotes.delete(roundedMidi);
+      this.release(roundedMidi);
+      throw error;
+    }
+  }
+
+  setPitchBend(cents: number): void {
+    this.pitchBendCents = Math.max(-1_200, Math.min(1_200, Number.isFinite(cents) ? cents : 0));
+    const now = this.context?.currentTime ?? 0;
+    this.voices.forEach((voice) => voice.oscillator.detune.setValueAtTime(this.pitchBendCents, now));
   }
 
   async playRoot(midi: number, durationMs = 900): Promise<void> {
@@ -80,7 +113,7 @@ export class ReferenceVoiceBank {
       const startAt = context.currentTime;
       const releaseAt = startAt + durationMs / 1000;
       const gain = normalizedVoiceGain(Math.min(3, selected.length));
-      selected.forEach((midi, index) => this.startVoice(context, midi, startAt + index * stepMs / 1000, releaseAt, gain));
+      selected.forEach((midi, index) => this.startVoice(context, midi, startAt + index * stepMs / 1000, releaseAt, gain, false));
       this.scheduleTimedRelease(durationMs + RELEASE_SECONDS * 1000);
     } catch (error) {
       this.release();
@@ -89,15 +122,26 @@ export class ReferenceVoiceBank {
   }
 
   release(midi?: number): void {
-    const matching = [...this.voices].filter((voice) => midi === undefined || voice.midi === midi);
-    const pending = midi === undefined ? this.pendingMidis.size > 0 : this.pendingMidis.has(Math.round(midi));
-    if (matching.length === 0 && !pending && midi !== undefined) return;
+    if (midi !== undefined) {
+      const roundedMidi = Math.round(midi);
+      const matching = [...this.voices].filter((voice) => voice.held && voice.midi === roundedMidi);
+      const pending = this.pendingHeldNotes.delete(roundedMidi);
+      this.clearHeldSafetyTimer(roundedMidi);
+      if (matching.length === 0 && !pending) return;
+      const context = this.context;
+      if (context) matching.forEach((voice) => this.releaseVoice(voice, context.currentTime));
+      if (!this.hasSoundOrPending()) this.scheduleGateOff(REFERENCE_GATE_TAIL_MS);
+      return;
+    }
+
+    const hadSound = this.gated || this.hasSoundOrPending();
     this.generation += 1;
     this.pendingMidis.clear();
+    this.pendingHeldNotes.clear();
     this.clearTimers();
     const context = this.context;
-    if (context) matching.forEach((voice) => this.releaseVoice(voice, context.currentTime));
-    this.scheduleGateOff(REFERENCE_GATE_TAIL_MS);
+    if (context) [...this.voices].forEach((voice) => this.releaseVoice(voice, context.currentTime));
+    if (hadSound) this.scheduleGateOff(REFERENCE_GATE_TAIL_MS);
   }
 
   stopAll(): void {
@@ -107,6 +151,7 @@ export class ReferenceVoiceBank {
   async dispose(): Promise<void> {
     this.generation += 1;
     this.pendingMidis.clear();
+    this.pendingHeldNotes.clear();
     this.clearTimers();
     const context = this.context;
     if (context) [...this.voices].forEach((voice) => this.releaseVoice(voice, context.currentTime, 0.01));
@@ -117,6 +162,7 @@ export class ReferenceVoiceBank {
     this.master = null;
     this.limiter = null;
     this.context = null;
+    this.pitchBendCents = 0;
     if (context && context.state !== 'closed') await context.close().catch(() => undefined);
   }
 
@@ -135,9 +181,8 @@ export class ReferenceVoiceBank {
       const startAt = context.currentTime + referenceToneStartDelay(hadVoices);
       const releaseAt = durationMs > 0 ? startAt + durationMs / 1000 : null;
       const gain = normalizedVoiceGain(selected.length);
-      selected.forEach((midi) => this.startVoice(context, midi, startAt, releaseAt, gain));
+      selected.forEach((midi) => this.startVoice(context, midi, startAt, releaseAt, gain, false));
       if (durationMs > 0) this.scheduleTimedRelease(durationMs + REFERENCE_TONE_SWITCH_SECONDS * 1000 + RELEASE_SECONDS * 1000);
-      else this.safetyTimer = window.setTimeout(() => this.release(), MAX_TONE_MS);
     } catch (error) {
       this.release();
       throw error;
@@ -147,6 +192,7 @@ export class ReferenceVoiceBank {
   private beginPlayback(midis: number[]): number {
     const generation = ++this.generation;
     this.pendingMidis.clear();
+    this.pendingHeldNotes.clear();
     midis.forEach((midi) => this.pendingMidis.add(midi));
     this.clearTimers();
     const context = this.context;
@@ -173,14 +219,15 @@ export class ReferenceVoiceBank {
     return this.context;
   }
 
-  private startVoice(context: AudioContext, midi: number, startAt: number, releaseAt: number | null, peakGain: number): void {
+  private startVoice(context: AudioContext, midi: number, startAt: number, releaseAt: number | null, peakGain: number, held: boolean): void {
     const master = this.master;
     if (!master) return;
     const oscillator = context.createOscillator();
     const gain = context.createGain();
-    const voice = { midi, oscillator, gain };
+    const voice = { midi, oscillator, gain, held };
     oscillator.type = REFERENCE_TONE_WAVEFORM;
     oscillator.frequency.setValueAtTime(midiToFrequency(midi), startAt);
+    oscillator.detune.setValueAtTime(this.pitchBendCents, startAt);
     gain.gain.setValueAtTime(0.0001, context.currentTime);
     gain.gain.setValueAtTime(0.0001, startAt);
     gain.gain.linearRampToValueAtTime(peakGain, startAt + 0.008);
@@ -225,6 +272,7 @@ export class ReferenceVoiceBank {
     this.gateTimer = window.setTimeout(() => {
       if (generation !== this.generation) return;
       this.gateTimer = null;
+      if (this.hasSoundOrPending()) return;
       this.setGate(false);
     }, delayMs);
   }
@@ -234,6 +282,34 @@ export class ReferenceVoiceBank {
     if (this.safetyTimer !== null) window.clearTimeout(this.safetyTimer);
     this.gateTimer = null;
     this.safetyTimer = null;
+    this.heldSafetyTimers.forEach((timer) => window.clearTimeout(timer));
+    this.heldSafetyTimers.clear();
+  }
+
+  private interruptAudition(): void {
+    const auditionVoices = [...this.voices].filter((voice) => !voice.held);
+    if (this.pendingMidis.size === 0 && auditionVoices.length === 0) return;
+    this.generation += 1;
+    this.pendingMidis.clear();
+    if (this.safetyTimer !== null) window.clearTimeout(this.safetyTimer);
+    this.safetyTimer = null;
+    const context = this.context;
+    if (context) auditionVoices.forEach((voice) => this.releaseVoice(voice, context.currentTime, REFERENCE_TONE_SWITCH_SECONDS));
+  }
+
+  private clearHeldSafetyTimer(midi: number): void {
+    const timer = this.heldSafetyTimers.get(midi);
+    if (timer !== undefined) window.clearTimeout(timer);
+    this.heldSafetyTimers.delete(midi);
+  }
+
+  private cancelGateOff(): void {
+    if (this.gateTimer !== null) window.clearTimeout(this.gateTimer);
+    this.gateTimer = null;
+  }
+
+  private hasSoundOrPending(): boolean {
+    return this.voices.size > 0 || this.pendingMidis.size > 0 || this.pendingHeldNotes.size > 0;
   }
 
   private setGate(gated: boolean): void {
