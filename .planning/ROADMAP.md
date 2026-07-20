@@ -22,7 +22,7 @@ Physical iPhone/Android/desktop microphone verification remains the explicit rel
 
 ## Milestone 2 — Key-aware and score-guided practice
 
-V2 is isolated on `feature/pitch-lab-v2`; `main` and the current production route remain the V1 rollback baseline.
+V2 is isolated on `feature/pitch-lab-v2`; `main` remains the V1 source rollback baseline, while the production route now serves the verified V2 build.
 
 ### Phase 2 / Product P1: Tuning + harmony practice
 **Goal:** Separate TUNING and PRACTICE, then let a singer choose a key, understand usable harmony, audition it, and practice exact chord tones.
@@ -38,7 +38,7 @@ V2 is isolated on `feature/pitch-lab-v2`; `main` and the current production rout
 5. Initial, practice, and neural graphs pass separate asset budgets.
 
 **Plans:**
-- [ ] 02-01 — Implementation, automated gates, and the separate `/pitch-lab-v2/` preview deployment are complete; physical iPhone/Android release checks remain
+- [ ] 02-01 — Implementation, automated gates, separate preview, and `/pitchlab/` production cutover are complete; physical iPhone/Android release checks remain
 
 ### Phase 3 / Product P2: Score game + choir parts
 **Goal:** Turn a structured or OMR-converted score into a clock-correct singing game with explicit choir-part selection and correction.

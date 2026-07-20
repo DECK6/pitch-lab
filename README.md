@@ -11,8 +11,9 @@
 - 입력: 데스크톱·노트북·모바일 브라우저 마이크
 - 개인정보: 마이크 오디오는 서버로 전송하지 않고 브라우저에서 처리
 
-- V2 프리뷰: <https://dexa.art/pitch-lab-v2/>
-- 보존된 V1 프로덕션: <https://dexa.art/pitchlab/>
+- V2 프로덕션: <https://dexa.art/pitchlab/>
+- V2 별도 경로: <https://dexa.art/pitch-lab-v2/>
+- V1 소스 기준점: `main`의 `b490341`
 
 ## 로컬 실행
 
