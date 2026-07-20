@@ -119,7 +119,7 @@ test('reference keyboard spans three octaves, supports polyphonic ASDF controls,
   const octaveStatus = page.getByRole('status', { name: 'Reference keyboard octave' });
   await expect(octaveStatus.getByRole('button')).toHaveCount(0);
   await expect(octaveStatus).toContainText('− / + KEY');
-  await page.keyboard.press('Shift+=');
+  await page.keyboard.press('=');
   await expect(page.getByText('C4–B6')).toBeVisible();
   await expect(page.locator('#octave-value')).toHaveText('4–6');
   await page.keyboard.press('NumpadSubtract');

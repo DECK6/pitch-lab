@@ -223,7 +223,7 @@ export class PianoView {
 
   private handleOctaveShortcut(event: KeyboardEvent): boolean {
     if (event.repeat || event.metaKey || event.ctrlKey || event.altKey || isEditableTarget(event.target)) return false;
-    const direction = event.key === '+' || (event.code === 'Equal' && event.shiftKey) || event.code === 'NumpadAdd'
+    const direction = event.key === '+' || event.code === 'Equal' || event.code === 'NumpadAdd'
       ? 1
       : event.key === '-' || event.code === 'NumpadSubtract'
         ? -1
