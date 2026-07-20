@@ -21,9 +21,9 @@ A person can sing one note and immediately understand what it is, how accurately
 ### Active
 
 - [ ] Run on current desktop and mobile browsers, including iOS Safari.
-- [ ] Separate the interface into TUNING and PRACTICE without regressing V1 behavior.
-- [ ] Show key-aware diatonic, color/tension, and related/borrowed chord choices.
-- [ ] Grade selected chord tones using the existing monophonic microphone pipeline.
+- [x] Separate the interface into TUNING and PRACTICE without regressing V1 behavior.
+- [x] Show key-aware diatonic, color/tension, and related/borrowed chord choices.
+- [x] Grade selected chord tones using the existing monophonic microphone pipeline.
 - [ ] Import structured scores, select choir parts, and run a score-synchronized practice game.
 
 ### Out of Scope for V1
@@ -44,7 +44,7 @@ A person can sing one note and immediately understand what it is, how accurately
 
 The approved design deliberately exposes the trade between a tiny, immediate DSP path and a heavier optional neural module. The initial screen must remain useful offline after load. Neural mode exists in the current release, but its product label stays neutral until a fixed benchmark proves an accuracy advantage.
 
-V2 preserves `main` at the V1 baseline and is planned on `feature/pitch-lab-v2`. P1 adds no production dependency. P2 score and OMR capabilities are optional graphs that never load in the default TUNING path.
+V2 preserves `main` at the V1 source baseline and is implemented on `feature/pitch-lab-v2`. The verified P1 build is live at both production and alternate routes. P1 adds no production dependency. P2 score and OMR capabilities are optional graphs that never load in the default TUNING path.
 
 ## Constraints
 
