@@ -1,6 +1,6 @@
 # Requirements: PITCH/LAB 01
 
-**Defined:** 2026-07-19  
+**Defined:** 2026-07-19
 **Core Value:** A singer immediately sees the note and tuning direction of a clean monophonic input.
 
 ## v1 Requirements
@@ -21,7 +21,7 @@
 
 ### Reference instrument and interface
 
-- [x] **PIA-01**: User can play 24 chromatic sine reference tones over a selectable two-octave range using pointer or touch.
+- [x] **PIA-01**: User can play a selectable 36-key chromatic triangle reference range using pointer/touch, with ASDF-style physical controls for the center octave.
 - [x] **PIA-02**: Reference playback is monophonic, click-free, correctly tuned, and gates microphone grading until its release tail ends.
 - [x] **UI-01**: The interface is responsive, keyboard-accessible, reduced-motion aware, and readable without relying on color alone.
 - [x] **UI-02**: The interface uses the approved playful retro-industrial instrument direction without copied brand assets.
@@ -34,10 +34,32 @@
 
 ## v2 Requirements
 
-### Score practice
+### P1 — Modes, harmony, and guided practice
 
-- **SCORE-01**: User can import a PDF score and compare sung notes with a selected target line.
-- **CHOIR-01**: User can select or extract a choir part from a multi-part score.
+- [x] **MOD-01**: User can switch between TUNING and PRACTICE without restarting a running microphone or pitch engine.
+- [x] **MOD-02**: TUNING retains the current V1 pitch, contour, engine, piano, keyboard, and mobile behavior.
+- [x] **KEY-01**: User can select all 12 tonics in major or minor with key-correct enharmonic spelling.
+- [x] **HAR-01**: User sees seven diatonic triads or seventh chords with Roman numerals, note names, and function labels.
+- [x] **HAR-02**: User sees explainable color/tension options above the core lane and secondary-dominant/borrowed options below it.
+- [x] **HAR-03**: User can select a chord and see its notes, role, suggested resolution, and highlighted piano keys.
+- [x] **AUD-01**: User can audition a root, arpeggio, or bounded polyphonic chord without clipping, stuck voices, or microphone self-grading.
+- [x] **PRA-01**: User can select a chord tone, sing it, and receive target note, actual note, cents, stability, and pass/close/retry feedback.
+- [x] **UI2-01**: Practice controls and chord lanes work with touch, pointer, keyboard, 320 px mobile width, and 200% zoom.
+- [x] **WGT-01**: P1 preserves the default TUNING boot budget and loads the PRACTICE graph separately.
+
+### P2 — Structured score game and choir parts
+
+- [ ] **SCR-01**: User can import `.musicxml`, `.xml`, and `.mxl` locally and see a validation report before practice.
+- [ ] **SCR-02**: The normalized score preserves parts, voices, staves, written/sounding pitch, keys, meter, tempo, pickup, ties, tuplets, lyrics, and simple repeats.
+- [ ] **SCR-03**: Unsupported or ambiguous jumps and polyphonic target moments are visible warnings, never silent guesses.
+- [ ] **GAME-01**: User can count in, change tempo, loop measures, and follow a score cursor and game lane driven by the Web Audio clock.
+- [ ] **GAME-02**: User receives latency-compensated per-note pitch, onset, sustain, and phrase feedback from the existing monophonic detector.
+- [ ] **CHOIR-01**: User can directly choose separately encoded S/A/T/B parts.
+- [ ] **CHOIR-02**: User can inspect and correct staff/voice-based SATB suggestions with confidence and range/lyric previews.
+- [ ] **PDF-01**: User can opt in to printed PDF/image OMR, review/correct the MusicXML result, and only then start grading.
+- [ ] **PRIV-02**: MusicXML remains local; PDF OMR never receives microphone audio and deletes temporary score files under a documented TTL.
+- [ ] **WGT-02**: Score renderer, MXL decoder, and OMR assets are absent from initial TUNING and PRACTICE network graphs.
+- [ ] **REL2-01**: Unit, fixture, E2E, asset, and physical iPhone/Android checks cover practice and score flows.
 
 ## Out of Scope
 
@@ -46,6 +68,9 @@
 | Polyphonic microphone analysis | Requires source separation and is not needed to prove the singing tuner wedge |
 | Audio uploads or cloud inference | Conflicts with privacy and adds backend weight |
 | Sampled piano and sustain | Exact monophonic reference tones meet the first-use need |
+| Polyphonic microphone grading | One singer/voice line is the supported target |
+| Handwritten OMR | Printed common Western notation is the P2 PDF target |
+| Full notation editor | P2 corrects target events and part mappings, not page engraving |
 
 ## Traceability
 
@@ -56,8 +81,12 @@
 | PIA-01, PIA-02, UI-01, UI-02 | Phase 1 | Complete |
 | REL-01, REL-02 | Phase 1 | Complete |
 | REL-03 | Phase 1 | Pending physical-device matrix |
+| MOD-01, MOD-02, KEY-01, HAR-01, HAR-02, HAR-03 | Phase 2 / Product P1 | Implemented; physical release gate pending |
+| AUD-01, PRA-01, UI2-01, WGT-01 | Phase 2 / Product P1 | Implemented; physical release gate pending |
+| SCR-01, SCR-02, SCR-03, GAME-01, GAME-02 | Phase 3 / Product P2 | Planned |
+| CHOIR-01, CHOIR-02, PDF-01, PRIV-02, WGT-02, REL2-01 | Phase 3 / Product P2 | Planned |
 
-**Coverage:** 15 v1 requirements, 15 mapped, 0 unmapped.
+**Coverage:** all V1 and V2 requirements are mapped; P1 is implemented on `feature/pitch-lab-v2`, while P2 remains planned.
 
 ---
-*Last updated: 2026-07-19 after implementation and automated verification*
+*Last updated: 2026-07-20 for the V2 P1/P2 plan*

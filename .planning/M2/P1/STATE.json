@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "milestone": "M2",
+  "phase": "P1",
+  "gate": "physical_device_and_preview_pending",
+  "status": "implemented",
+  "owner_runtime": "codex",
+  "acceptance_criteria": [
+    "TUNING preserves V1 behavior and initial-loading contracts",
+    "PRACTICE exposes key-correct diatonic, color, and related chord lanes",
+    "Root, arpeggio, and chord playback are bounded, clip-free, and detector-gated",
+    "A selected chord tone receives deterministic live pitch feedback",
+    "Initial, practice, and neural bundle graphs pass separate caps",
+    "Physical iPhone Safari and Android Chrome checks are recorded before cutover"
+  ],
+  "evidence": [
+    {
+      "type": "command",
+      "command": "npm run verify",
+      "result": "pass: 39 tests; production build; initial 58 KB raw / 18 KB Brotli; neural 13,969 KB raw / 2,587 KB Brotli",
+      "observed_at": "2026-07-20T05:05:27Z"
+    },
+    {
+      "type": "artifact",
+      "path": ".planning/phases/02-p1-practice-harmony/02-01-PLAN.md",
+      "result": "P1 execution plan authored"
+    },
+    {
+      "type": "command",
+      "command": "npm run verify",
+      "result": "pass: 67 tests; typecheck; production build; initial 66 KB raw / 20 KB Brotli; practice 27 KB raw / 7 KB Brotli; neural 13,969 KB raw / 2,587 KB Brotli",
+      "observed_at": "2026-07-20T05:50:40Z"
+    },
+    {
+      "type": "command",
+      "command": "npm run qa:smoke",
+      "result": "pass: 20 applicable browser tests across desktop Chromium, mobile Chromium, and iPhone WebKit; 16 project-inapplicable tests skipped",
+      "observed_at": "2026-07-20T05:50:40Z"
+    },
+    {
+      "type": "artifact",
+      "path": "docs/eng-review-test-plan.md",
+      "result": "P1 automated evidence recorded; physical iPhone and Android release rows remain pending"
+    }
+  ],
+  "updated_at": "2026-07-20T05:50:40Z"
+}

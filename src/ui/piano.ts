@@ -28,6 +28,8 @@ const COMPUTER_KEY_BY_CODE = new Map(COMPUTER_KEY_BINDINGS.map((binding) => [bin
 export class PianoView {
   private startMidi = 48;
   private activeMidi: number | null = null;
+  private highlightedPitchClasses = new Set<number>();
+  private rootPitchClass: number | null = null;
   private readonly pressedComputerKeys = new Map<string, number>();
 
   constructor(
@@ -56,6 +58,18 @@ export class PianoView {
     this.tone.release(this.activeMidi);
     this.root.querySelector(`[data-midi="${this.activeMidi}"]`)?.classList.remove('is-active');
     this.activeMidi = null;
+  }
+
+  setHighlights(pitchClasses: number[], rootPitchClass: number | null): void {
+    this.highlightedPitchClasses = new Set(pitchClasses.map((pitchClass) => ((pitchClass % 12) + 12) % 12));
+    this.rootPitchClass = rootPitchClass === null ? null : ((rootPitchClass % 12) + 12) % 12;
+    this.applyHighlights();
+  }
+
+  clearHighlights(): void {
+    this.highlightedPitchClasses.clear();
+    this.rootPitchClass = null;
+    this.applyHighlights();
   }
 
   private render(): void {
@@ -102,7 +116,21 @@ export class PianoView {
       });
       button.addEventListener('blur', () => this.release(midi, button));
     });
+    this.applyHighlights();
     this.root.scrollLeft = WHITE_KEY_WIDTH * WHITE_KEYS_PER_OCTAVE;
+  }
+
+  private applyHighlights(): void {
+    this.root.querySelectorAll<HTMLButtonElement>('.piano-key').forEach((button) => {
+      const pitchClass = ((Number(button.dataset.midi) % 12) + 12) % 12;
+      const highlighted = this.highlightedPitchClasses.has(pitchClass);
+      const root = highlighted && pitchClass === this.rootPitchClass;
+      button.classList.toggle('is-chord-tone', highlighted);
+      button.classList.toggle('is-chord-root', root);
+      if (root) button.dataset.harmony = 'root';
+      else if (highlighted) button.dataset.harmony = 'tone';
+      else delete button.dataset.harmony;
+    });
   }
 
   private keyMarkup(midi: number, black: boolean): string {

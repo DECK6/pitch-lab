@@ -1,9 +1,11 @@
 import { AudioSession } from '../audio/audio-session';
 import type { NeuralProgress } from '../audio/engine-manager';
 import type { AudioSessionState, DeviceDiagnostics, PitchFrame } from '../audio/types';
+import { ModeStore, type AppMode } from '../app/mode-store';
 import { frequencyToNote } from '../music/pitch-math';
 import { ReferenceTone } from '../piano/reference-tone';
 import { PianoView } from './piano';
+import type { PracticeWorkspace } from './practice/practice-workspace';
 import { PitchTrail } from './trail';
 
 const stateLabels: Record<AudioSessionState, string> = {
@@ -33,6 +35,11 @@ export class App {
   private readonly tone: ReferenceTone;
   private readonly piano: PianoView;
   private readonly trail: PitchTrail;
+  private readonly modeStore: ModeStore;
+  private readonly pianoPanel: HTMLElement;
+  private practice: PracticeWorkspace | null = null;
+  private practiceLoading: Promise<PracticeWorkspace> | null = null;
+  private currentMode: AppMode = 'tuning';
   private currentState: AudioSessionState = 'idle';
   private gated = false;
   private lastFrameAt = 0;
@@ -49,16 +56,24 @@ export class App {
     this.tone = new ReferenceTone((gated) => {
       this.gated = gated;
       this.session.setDetectorGated(gated);
+      this.practice?.setGated(gated);
       const listeningState = this.currentState === 'running' ? 'LISTENING' : stateLabels[this.currentState];
       this.setText('signal-state', gated ? 'REFERENCE PLAYING' : listeningState);
       this.root.classList.toggle('is-reference-playing', gated);
       if (gated) this.clearPitch('REFERENCE PLAYING');
-      else this.clearPitch(listeningState);
+      else {
+        this.clearPitch(listeningState);
+        this.practice?.reset(listeningState);
+      }
     });
     this.piano = new PianoView(this.get('piano-keys'), this.tone, (range) => this.setText('octave-value', octaveSummary(range)));
     this.trail = new PitchTrail(this.get<HTMLCanvasElement>('pitch-trail'));
+    this.pianoPanel = this.get('reference-piano-panel');
+    this.modeStore = new ModeStore();
     this.bindControls();
+    this.modeStore.subscribe((mode) => void this.applyMode(mode));
     this.updateSessionState('idle', 'Microphone audio stays on this device.');
+    void this.applyMode(this.modeStore.current);
   }
 
   private bindControls(): void {
@@ -71,6 +86,9 @@ export class App {
     this.get<HTMLButtonElement>('engine-light').addEventListener('click', () => this.session.selectLight());
     this.get<HTMLButtonElement>('engine-neural').addEventListener('click', () => void this.session.selectNeural());
     this.get<HTMLButtonElement>('neural-cancel').addEventListener('click', () => this.session.cancelNeural());
+    this.get<HTMLButtonElement>('mode-tuning').addEventListener('click', () => this.modeStore.set('tuning'));
+    this.get<HTMLButtonElement>('mode-practice').addEventListener('click', () => this.modeStore.set('practice'));
+    this.root.querySelector('.mode-switch')?.addEventListener('keydown', (event) => this.handleModeKeydown(event as KeyboardEvent));
     this.get<HTMLButtonElement>('octave-button').addEventListener('click', () => {
       const range = this.piano.cycleOctave();
       this.setText('reference-range', range);
@@ -81,6 +99,18 @@ export class App {
     });
   }
 
+  private handleModeKeydown(event: KeyboardEvent): void {
+    const next = event.key === 'ArrowLeft' || event.key === 'Home'
+      ? 'tuning'
+      : event.key === 'ArrowRight' || event.key === 'End'
+        ? 'practice'
+        : null;
+    if (!next) return;
+    event.preventDefault();
+    this.modeStore.set(next);
+    this.get<HTMLButtonElement>(`mode-${next}`).focus();
+  }
+
   private updateSessionState(state: AudioSessionState, message?: string): void {
     this.currentState = state;
     const button = this.get<HTMLButtonElement>('mic-button');
@@ -88,11 +118,15 @@ export class App {
     button.classList.toggle('is-active', state === 'running');
     button.textContent = state === 'running' ? '● STOP MIC' : state === 'requesting_permission' || state === 'starting' ? '× CANCEL' : state === 'suspended' || state === 'needs_resume_tap' ? '▶ RESUME MIC' : '● MIC START';
     if (message) this.announce(message);
-    if (state !== 'running' && state !== 'starting') this.clearPitch(message ?? stateLabels[state]);
+    if (state !== 'running' && state !== 'starting') {
+      this.clearPitch(message ?? stateLabels[state]);
+      this.practice?.reset(stateLabels[state]);
+    }
   }
 
   private updatePitch(frame: PitchFrame): void {
     if (this.gated) return;
+    this.practice?.updatePitch(frame);
     this.lastFrameAt = performance.now();
     this.setText('signal-db', Number.isFinite(frame.rmsDb) ? `${Math.round(frame.rmsDb)} dB` : '— dB');
     this.setText('confidence-value', frame.confidenceBand.toUpperCase());
@@ -121,6 +155,60 @@ export class App {
     this.setMeterNeedle(cents);
     this.root.classList.toggle('is-in-tune', tuning === 'IN TUNE');
     this.trail.push(frame.timestampMs, frame.frequencyHz, frame.discontinuity);
+  }
+
+  private async applyMode(mode: AppMode): Promise<void> {
+    this.currentMode = mode;
+    const tuning = this.get('tuning-workspace');
+    const practiceHost = this.get('practice-workspace');
+    const tuningTab = this.get<HTMLButtonElement>('mode-tuning');
+    const practiceTab = this.get<HTMLButtonElement>('mode-practice');
+    const isPractice = mode === 'practice';
+
+    tuningTab.setAttribute('aria-selected', String(!isPractice));
+    practiceTab.setAttribute('aria-selected', String(isPractice));
+    tuningTab.tabIndex = isPractice ? -1 : 0;
+    practiceTab.tabIndex = isPractice ? 0 : -1;
+    this.setText('work-mode-value', isPractice ? 'KEY / CHORD' : 'FREE INPUT');
+
+    if (!isPractice) {
+      this.practice?.setActive(false);
+      tuning.hidden = false;
+      practiceHost.hidden = true;
+      this.get('tuning-piano-anchor').append(this.pianoPanel);
+      return;
+    }
+
+    tuning.hidden = true;
+    practiceHost.hidden = false;
+    try {
+      const practice = await this.loadPractice();
+      if (this.currentMode !== 'practice') return;
+      this.get('practice-piano-anchor').append(this.pianoPanel);
+      practice.setActive(true);
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : 'Unknown module error';
+      this.announce(`Practice mode could not start: ${detail}`);
+      this.modeStore.set('tuning');
+    }
+  }
+
+  private loadPractice(): Promise<PracticeWorkspace> {
+    if (this.practice) return Promise.resolve(this.practice);
+    if (this.practiceLoading) return this.practiceLoading;
+    const host = this.get('practice-workspace');
+    host.innerHTML = '<section class="panel practice-loading" aria-live="polite">LOADING PRACTICE MODULE…</section>';
+    this.practiceLoading = import('./practice/practice-workspace')
+      .then(({ PracticeWorkspace: Workspace }) => {
+        host.innerHTML = '';
+        const practice = new Workspace(host, this.tone, this.piano);
+        this.practice = practice;
+        return practice;
+      })
+      .finally(() => {
+        this.practiceLoading = null;
+      });
+    return this.practiceLoading;
   }
 
   private clearPitch(reason: string, clearTrail = true): void {
@@ -194,28 +282,36 @@ function shellMarkup(): string {
     <div class="instrument-shell">
       <header class="topbar">
         <div class="brand-block">
-          <span class="brand">PITCH/LAB 01</span>
+          <span class="brand">PITCH/LAB 02</span>
           <span class="descriptor">VOICE CALIBRATION INSTRUMENT</span>
         </div>
         <button id="mic-button" class="mic-button" type="button">● MIC START</button>
       </header>
 
+      <nav class="mode-switch" role="tablist" aria-label="Work mode">
+        <button id="mode-tuning" type="button" role="tab" aria-selected="true" aria-controls="tuning-workspace">TUNING</button>
+        <button id="mode-practice" type="button" role="tab" aria-selected="false" aria-controls="practice-workspace" tabindex="-1">PRACTICE</button>
+      </nav>
+
       <div class="function-row" aria-label="Instrument status">
         <div class="input-label"><strong>VOICE INPUT / 01</strong><small>sing · see · tune</small></div>
-        <div class="function-pad yellow"><strong>TUNER</strong><small>FREE INPUT</small></div>
+        <div class="function-pad yellow"><strong>WORK MODE</strong><small id="work-mode-value">FREE INPUT</small></div>
         <div class="function-pad orange"><strong>METER</strong><small>CENTS</small></div>
         <div class="function-pad blue"><strong>ENGINE</strong><small id="engine-value">LIGHT DSP</small></div>
         <button id="octave-button" class="function-pad mint" type="button"><strong>OCTAVE</strong><small id="octave-value">3–5</small></button>
         <div class="function-pad pink"><strong>TRAIL</strong><small>4 SEC</small></div>
       </div>
 
-      <section class="panel piano-panel" aria-labelledby="piano-title">
-        <div class="panel-head"><strong id="piano-title">03 / REFERENCE PIANO</strong><span aria-hidden="true">○</span></div>
-        <div class="piano-meta"><div><strong id="reference-range">C3–B5</strong><small>THREE OCTAVE · ASDF = CENTER OCTAVE · SWIPE / SCROLL</small></div><span class="pill">BRIGHT TONE</span></div>
-        <div id="piano-keys" class="piano-scroll" aria-label="Three octave reference keyboard"></div>
-      </section>
+      <div id="tuning-workspace" class="workspace" role="tabpanel" aria-labelledby="mode-tuning">
+        <div id="tuning-piano-anchor">
+          <section id="reference-piano-panel" class="panel piano-panel" aria-labelledby="piano-title">
+            <div class="panel-head"><strong id="piano-title">03 / REFERENCE PIANO</strong><span aria-hidden="true">○</span></div>
+            <div class="piano-meta"><div><strong id="reference-range">C3–B5</strong><small>THREE OCTAVE · ASDF = CENTER OCTAVE · SWIPE / SCROLL</small></div><span class="pill">BRIGHT TONE</span></div>
+            <div id="piano-keys" class="piano-scroll" aria-label="Three octave reference keyboard"></div>
+          </section>
+        </div>
 
-      <div class="main-grid">
+        <div class="main-grid">
         <section class="panel pitch-panel" aria-labelledby="pitch-title">
           <div class="panel-head"><strong id="pitch-title">01 / LIVE PITCH</strong><span aria-hidden="true">○</span></div>
           <div class="pitch-display">
@@ -261,7 +357,10 @@ function shellMarkup(): string {
           <p class="privacy-copy">AUDIO IS PROCESSED ON THIS DEVICE. PCM IS NOT UPLOADED OR SAVED.</p>
           <p class="model-copy">NEURAL: SwiftF0 v0.1.1 · DSP REFINE · ONNX Runtime Web · MIT</p>
         </aside>
+        </div>
       </div>
+
+      <div id="practice-workspace" class="workspace" role="tabpanel" aria-labelledby="mode-practice" hidden></div>
 
       <footer><span>ALL AUDIO PROCESSED ON THIS DEVICE</span><span id="footer-engine">ENGINE: LIGHT DSP</span></footer>
       <div id="app-message" class="sr-status" role="status" aria-live="polite">Microphone audio stays on this device.</div>
