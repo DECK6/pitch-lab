@@ -16,7 +16,7 @@ V2 turns the current free-running tuner into two clearly separated instruments:
 2. **PRACTICE** adds a key-aware harmony map, chord audition, target-note exercises, and feedback.
 3. **SCORE** arrives in P2. It converts a structured score into a timed target lane, lets a singer choose a choir part, and grades pitch and rhythm.
 
-The current production app stays intact on `main` and `dexa.art/pitchlab/`. V2 work stays on `feature/pitch-lab-v2`; previews use a separate path such as `dexa.art/pitchlab-v2/` until all cutover gates pass.
+The current production app stays intact on `main` and `dexa.art/pitchlab/`. V2 work stays on `feature/pitch-lab-v2`; the live preview uses the separate `dexa.art/pitch-lab-v2/` path until all cutover gates pass.
 
 ## Product layout
 
@@ -394,7 +394,7 @@ Pure music-theory and score-normalization modules target 100% branch coverage. B
 ## Release sequence
 
 1. Keep `main` and `dexa.art/pitchlab/` on V1.
-2. Implement P1 on `feature/pitch-lab-v2`; deploy preview to a separate path.
+2. Implement P1 on `feature/pitch-lab-v2`; keep the live preview at `dexa.art/pitch-lab-v2/` on a separate path.
 3. Pass P1 unit, browser, bundle, and physical-device gates.
 4. Add P2A/P2B behind the SCORE mode flag; keep PDF import disabled until P2C privacy/license/accuracy gates pass.
 5. Run side-by-side V1/V2 regression QA.
