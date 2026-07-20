@@ -91,7 +91,7 @@ test('chord audition gates grading and returns to listening after its release ta
   await expect(page.locator('#practice-result')).toHaveText('MIC OFF');
 });
 
-test('reference keyboard spans three octaves, supports polyphonic ASDF controls, and shifts its range', async ({ page }) => {
+test('reference keyboard spans three octaves, supports polyphonic ASDF controls, and uses keyboard-only octave shifting', async ({ page }) => {
   await page.goto('/');
   await expect(page.locator('.piano-key')).toHaveCount(36);
   await expect(page.locator('.piano-key[data-midi="83"]')).toBeAttached();
@@ -116,26 +116,70 @@ test('reference keyboard spans three octaves, supports polyphonic ASDF controls,
   await a4.click();
   await expect(page.locator('#signal-state')).toHaveText('MIC OFF', { timeout: 2_000 });
   await expect(page.locator('#tuning-state')).toHaveText('MIC OFF');
-  await page.getByRole('button', { name: 'Shift reference keyboard up one octave' }).click();
-  await expect(page.getByText('C4–B6')).toBeVisible();
-  await expect(page.locator('#octave-value')).toHaveText('4–6');
-  await page.keyboard.press('-');
-  await expect(page.getByText('C3–B5')).toBeVisible();
+  const octaveStatus = page.getByRole('status', { name: 'Reference keyboard octave' });
+  await expect(octaveStatus.getByRole('button')).toHaveCount(0);
+  await expect(octaveStatus).toContainText('− / + KEY');
   await page.keyboard.press('Shift+=');
   await expect(page.getByText('C4–B6')).toBeVisible();
+  await expect(page.locator('#octave-value')).toHaveText('4–6');
+  await page.keyboard.press('NumpadSubtract');
+  await expect(page.getByText('C3–B5')).toBeVisible();
+  await page.keyboard.press('NumpadAdd');
+  await expect(page.getByText('C4–B6')).toBeVisible();
+
+  await page.keyboard.down('a');
+  await expect(page.locator('.piano-key[data-midi="72"]')).toHaveClass(/is-active/);
+  await page.keyboard.press('-');
+  await expect(page.locator('.piano-key.is-active')).toHaveCount(0);
+  await page.keyboard.up('a');
+  await page.keyboard.press('-');
+  await expect(page.getByText('C2–B4')).toBeVisible();
+  await page.keyboard.press('-');
+  await expect(page.getByText('C2–B4')).toBeVisible();
+  await page.keyboard.press('Shift+=');
+  await expect(page.getByText('C3–B5')).toBeVisible();
+
+  await page.keyboard.press('-');
+  await page.keyboard.down('Shift');
+  await page.keyboard.down('=');
+  await page.keyboard.down('=');
+  await expect(page.getByText('C3–B5')).toBeVisible();
+  await page.keyboard.up('=');
+  await page.keyboard.up('Shift');
+  await page.keyboard.press('Shift+=');
+  await page.keyboard.press('Shift+=');
+  await expect(page.getByText('C4–B6')).toBeVisible();
+  await page.keyboard.press('-');
+  await page.evaluate(() => window.dispatchEvent(new KeyboardEvent('keydown', { key: '+', code: 'Equal', ctrlKey: true })));
+  await expect(page.getByText('C3–B5')).toBeVisible();
+  await page.getByRole('tab', { name: 'PRACTICE' }).click();
+  await page.getByRole('combobox', { name: 'KEY' }).focus();
+  await page.keyboard.press('Shift+=');
+  await expect(page.getByText('C3–B5')).toBeVisible();
 });
 
-test('pitch modulation is shared by Tuning and Practice with selectable range and center reset', async ({ page }) => {
+test('vertical spring pitch wheel is shared by Tuning and Practice with arrow-key control', async ({ page }, testInfo) => {
   await page.goto('/');
   const modulation = page.getByRole('group', { name: 'Pitch modulation' });
   const wheel = page.getByRole('slider', { name: 'Pitch modulation amount' });
   await expect(modulation).toBeVisible();
+  await expect(modulation.locator('.pitch-mod-wheel-stage')).toBeVisible();
+  await expect(modulation.getByRole('button', { name: 'Center pitch modulation' })).toHaveCount(0);
+  const wheelBox = await wheel.boundingBox();
+  expect(wheelBox?.height).toBeGreaterThan((wheelBox?.width ?? 0) * 1.5);
+  expect(await wheel.evaluate((element) => getComputedStyle(element).touchAction)).toBe('none');
   await expect(page.locator('#pitch-mod-value')).toHaveText('±0 cent');
 
   await page.keyboard.down('ArrowUp');
   await expect(page.locator('#pitch-mod-value')).toHaveText('+20 cent');
   await page.keyboard.up('ArrowUp');
   await expect(page.locator('#pitch-mod-value')).toHaveText('±0 cent');
+
+  await page.keyboard.down('ArrowUp');
+  await page.keyboard.down('ArrowDown');
+  await expect(page.locator('#pitch-mod-value')).toHaveText('±0 cent');
+  await page.keyboard.up('ArrowDown');
+  await page.keyboard.up('ArrowUp');
 
   await wheel.evaluate((element) => {
     const input = element as HTMLInputElement;
@@ -145,11 +189,58 @@ test('pitch modulation is shared by Tuning and Practice with selectable range an
   await expect(page.locator('#pitch-mod-value')).toHaveText('+100 cent');
   await page.getByRole('button', { name: 'Use twelve semitone pitch modulation range' }).click();
   await expect(page.locator('#pitch-mod-value')).toHaveText('+600 cent');
-  await page.getByRole('button', { name: 'Center pitch modulation' }).click();
+  await wheel.dispatchEvent('pointerup');
   await expect(page.locator('#pitch-mod-value')).toHaveText('±0 cent');
+
+  for (const releaseEvent of ['pointercancel', 'lostpointercapture'] as const) {
+    await wheel.evaluate((element) => {
+      const input = element as HTMLInputElement;
+      input.value = '40';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    await wheel.dispatchEvent(releaseEvent);
+    await expect(page.locator('#pitch-mod-value')).toHaveText('±0 cent');
+  }
+
+  await wheel.focus();
+  await page.keyboard.down('ArrowUp');
+  await expect(page.locator('#pitch-mod-value')).toHaveText('+120 cent');
+  await page.keyboard.up('ArrowUp');
+  await expect(page.locator('#pitch-mod-value')).toHaveText('±0 cent');
+  await page.keyboard.press('Shift+=');
+  await expect(page.getByText('C4–B6')).toBeVisible();
+  await page.keyboard.press('-');
+  await expect(page.getByText('C3–B5')).toBeVisible();
+  await wheel.evaluate((element) => {
+    const input = element as HTMLInputElement;
+    input.value = '40';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await wheel.blur();
+  await expect(page.locator('#pitch-mod-value')).toHaveText('±0 cent');
+  await wheel.evaluate((element) => {
+    const input = element as HTMLInputElement;
+    input.value = '40';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await page.evaluate(() => window.dispatchEvent(new Event('blur')));
+  await expect(page.locator('#pitch-mod-value')).toHaveText('±0 cent');
+
+  if (testInfo.project.name === 'desktop-chromium' && wheelBox) {
+    await page.mouse.move(wheelBox.x + wheelBox.width / 2, wheelBox.y + wheelBox.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(wheelBox.x + wheelBox.width / 2, wheelBox.y + 8);
+    await expect(page.locator('#pitch-mod-value')).not.toHaveText('±0 cent');
+    await page.mouse.up();
+    await expect(page.locator('#pitch-mod-value')).toHaveText('±0 cent');
+  }
 
   await page.getByRole('tab', { name: 'PRACTICE' }).click();
   await expect(modulation).toBeVisible();
+  await page.keyboard.down('ArrowDown');
+  await expect(page.locator('#pitch-mod-value')).toHaveText('−120 cent');
+  await page.keyboard.up('ArrowDown');
+  await expect(page.locator('#pitch-mod-value')).toHaveText('±0 cent');
 });
 
 test('mobile layout does not overflow the viewport', async ({ page }, testInfo) => {
@@ -216,6 +307,25 @@ test('mobile keyboard scrolls horizontally when swiping across keys', async ({ p
 
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(pageScrollBeforeGesture + 100);
   await expect(piano.locator('.piano-key.is-active')).toHaveCount(0);
+});
+
+test('mobile touch controls the vertical pitch wheel without scrolling the page', async ({ page, context }, testInfo) => {
+  test.skip(testInfo.project.name !== 'mobile-chromium');
+  await page.goto('/');
+  const wheel = page.getByRole('slider', { name: 'Pitch modulation amount' });
+  await wheel.scrollIntoViewIfNeeded();
+  const box = await wheel.boundingBox();
+  expect(box).not.toBeNull();
+  const x = Math.round(box!.x + box!.width / 2);
+  const startY = Math.round(box!.y + box!.height / 2);
+  const pageScrollBeforeGesture = await page.evaluate(() => window.scrollY);
+  const client = await context.newCDPSession(page);
+  await client.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y: startY }] });
+  await client.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x, y: startY - 28 }] });
+  await expect(page.locator('#pitch-mod-value')).not.toHaveText('±0 cent');
+  await client.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  await expect(page.locator('#pitch-mod-value')).toHaveText('±0 cent');
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(pageScrollBeforeGesture);
 });
 
 test('detects fake A4 in Light and loads the real Neural engine on demand', async ({ page }, testInfo) => {

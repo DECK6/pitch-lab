@@ -258,9 +258,8 @@ export class PianoView {
     const panel = this.root.closest<HTMLElement>('#reference-piano-panel');
     const slider = panel?.querySelector<HTMLInputElement>('#pitch-mod-control');
     const output = panel?.querySelector<HTMLOutputElement>('#pitch-mod-value');
-    const center = panel?.querySelector<HTMLButtonElement>('#pitch-mod-center');
     const rangeButtons = panel?.querySelectorAll<HTMLButtonElement>('[data-pitch-range]');
-    if (!slider || !output || !center || !rangeButtons) return;
+    if (!slider || !output || !rangeButtons?.length) return;
 
     const apply = (): void => {
       this.pitchModNormalized = Number(slider.value);
@@ -283,7 +282,6 @@ export class PianoView {
     slider.addEventListener('keyup', (event) => {
       if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End', 'PageUp', 'PageDown'].includes(event.key)) reset();
     });
-    center.addEventListener('click', reset);
     rangeButtons.forEach((button) => button.addEventListener('click', () => {
       this.pitchModRangeSemitones = Number(button.dataset.pitchRange) === 12 ? 12 : 2;
       rangeButtons.forEach((candidate) => candidate.setAttribute('aria-pressed', String(candidate === button)));
@@ -310,5 +308,6 @@ export class PianoView {
 
 function isEditableTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
+  if (target instanceof HTMLInputElement && target.id === 'pitch-mod-control') return false;
   return target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName);
 }
