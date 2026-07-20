@@ -20,6 +20,7 @@
 body { margin: 0; min-width: 320px; min-height: 100vh; background: #b9b8b1; }
 button { font: inherit; color: inherit; }
 button:focus-visible { outline: 3px solid #fff; outline-offset: 2px; box-shadow: 0 0 0 5px #111; }
+[hidden] { display: none !important; }
 
 #app { padding: clamp(10px, 2vw, 28px); }
 .instrument-shell { max-width: 1180px; margin: 0 auto; padding: 20px; border: 2px solid var(--line); border-radius: 18px; background: var(--shell); box-shadow: 0 12px 0 #555650; }
@@ -29,6 +30,9 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 2px; box-shadow:
 .descriptor { color: var(--muted); font-size: 0.7rem; letter-spacing: 0.04em; }
 .mic-button { min-height: 46px; padding: 0 20px; border: 2px solid var(--line); border-radius: 5px; background: var(--orange); font-weight: 900; box-shadow: 0 4px 0 #272722; cursor: pointer; }
 .mic-button:active, .mic-button.is-active { transform: translateY(2px); box-shadow: 0 2px 0 #272722; }
+.mode-switch { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 14px; padding: 6px; border: 1.5px solid var(--line); border-radius: 9px; background: #c8c5bb; }
+.mode-switch button { min-height: 45px; border: 1.5px solid transparent; border-radius: 5px; background: transparent; color: var(--muted); font-size: 0.78rem; font-weight: 900; letter-spacing: 0.08em; cursor: pointer; }
+.mode-switch button[aria-selected="true"] { border-color: var(--line); background: var(--paper); color: var(--ink); box-shadow: 0 3px 0 var(--line); transform: translateY(-1px); }
 
 .function-row { display: grid; grid-template-columns: 2.5fr repeat(5, 1fr); gap: 9px; margin: 16px 0 13px; }
 .input-label, .function-pad { min-height: 64px; border: 1.5px solid var(--line); border-radius: 6px; padding: 10px; box-shadow: 0 5px 0 #262723; text-align: left; }
@@ -39,13 +43,30 @@ button.function-pad { cursor: pointer; }
 .function-pad strong { font-size: 0.69rem; }
 .function-pad small, .input-label small { font-size: 0.57rem; letter-spacing: 0.04em; }
 .yellow { background: var(--yellow); } .orange { background: var(--orange); } .blue { background: var(--blue); } .mint { background: var(--mint); } .pink { background: var(--pink); }
+.octave-pad { gap: 5px; }
+.octave-stepper { display: grid; grid-template-columns: 28px minmax(28px, 1fr) 28px; align-items: center; gap: 3px; }
+.octave-stepper button { width: 28px; min-height: 27px; padding: 0; border: 1px solid var(--line); border-radius: 3px; background: #dce9df; font-weight: 900; line-height: 1; cursor: pointer; }
+.octave-stepper small { text-align: center; }
 
 .panel { border: 1.5px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--paper); }
 .panel-head { min-height: 36px; display: flex; justify-content: space-between; align-items: center; padding: 0 13px; border-bottom: 1px solid var(--line); background: #d4d0c4; font-size: 0.68rem; letter-spacing: 0.03em; }
+.panel-head h2 { margin: 0; font: inherit; font-weight: 900; }
 .piano-meta { display: flex; justify-content: space-between; align-items: center; gap: 10px; min-height: 62px; padding: 10px 13px; border-bottom: 1px solid var(--line); }
 .piano-meta div { display: flex; flex-direction: column; gap: 4px; }
 .piano-meta small { color: var(--muted); font-size: 0.65rem; }
 .pill { padding: 5px 8px; color: #fff; background: #2b2c28; border-radius: 999px; font-size: 0.64rem; white-space: nowrap; }
+.pitch-modulation { padding: 9px 13px 11px; border-bottom: 1px solid var(--line); background: #ddd9cc; }
+.pitch-mod-heading { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 7px; font-size: 0.65rem; }
+.pitch-mod-heading output { min-width: 72px; color: var(--muted); text-align: right; }
+.pitch-mod-controls { display: grid; grid-template-columns: auto minmax(140px, 1fr) auto; align-items: center; gap: 10px; }
+.pitch-mod-ranges { display: flex; gap: 4px; }
+.pitch-mod-controls button { min-height: 34px; padding: 0 9px; border: 1px solid var(--line); border-radius: 3px; background: var(--paper); font-size: 0.6rem; font-weight: 900; cursor: pointer; }
+.pitch-mod-ranges button[aria-pressed="true"] { background: var(--blue); color: #fff; box-shadow: inset 0 -3px 0 #345f84; }
+#pitch-mod-control { --pitch-mod-low: 50%; --pitch-mod-high: 50%; width: 100%; height: 34px; margin: 0; appearance: none; background: transparent; cursor: ew-resize; }
+#pitch-mod-control::-webkit-slider-runnable-track { height: 9px; border: 1px solid var(--line); background: linear-gradient(90deg, #f0ecdf 0 var(--pitch-mod-low), var(--blue) var(--pitch-mod-low) var(--pitch-mod-high), #f0ecdf var(--pitch-mod-high) 100%); box-shadow: inset 0 0 0 3px #d8d4c7; }
+#pitch-mod-control::-webkit-slider-thumb { width: 20px; height: 30px; margin-top: -11px; appearance: none; border: 1.5px solid var(--line); border-radius: 3px; background: var(--orange); box-shadow: 0 2px 0 var(--line); }
+#pitch-mod-control::-moz-range-track { height: 7px; border: 1px solid var(--line); background: linear-gradient(90deg, #f0ecdf 0 var(--pitch-mod-low), var(--blue) var(--pitch-mod-low) var(--pitch-mod-high), #f0ecdf var(--pitch-mod-high) 100%); }
+#pitch-mod-control::-moz-range-thumb { width: 20px; height: 28px; border: 1.5px solid var(--line); border-radius: 3px; background: var(--orange); box-shadow: 0 2px 0 var(--line); }
 .piano-scroll { overflow-x: auto; overscroll-behavior-inline: contain; -webkit-overflow-scrolling: touch; padding: 10px; scrollbar-color: #595b53 #cbc8bd; }
 .piano-surface { position: relative; width: calc(var(--white-count) * 68px); min-width: calc(var(--white-count) * 68px); height: 138px; }
 .white-keys { display: flex; height: 100%; }
@@ -55,6 +76,10 @@ button.function-pad { cursor: pointer; }
 .black-key { width: 40px; height: 88px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 3px; padding: 8px 1px; border: 1px solid #111; border-radius: 0 0 4px 4px; background: #242521; color: #fff; font-size: 0.58rem; box-shadow: 0 3px 0 #111; }
 .piano-key kbd { min-width: 17px; padding: 1px 3px; border: 1px solid currentColor; border-radius: 2px; background: transparent; font: inherit; font-size: 0.52rem; line-height: 1.15; text-align: center; opacity: 0.72; }
 .piano-key.is-active { background: var(--orange); color: #151612; transform: translateY(2px); box-shadow: none; }
+.piano-key.is-chord-tone:not(.is-active) { box-shadow: inset 0 -7px 0 var(--blue); }
+.black-key.is-chord-tone:not(.is-active) { box-shadow: inset 0 -7px 0 #86b2d1, 0 3px 0 #111; }
+.piano-key.is-chord-root:not(.is-active) { box-shadow: inset 0 -11px 0 var(--orange); }
+.black-key.is-chord-root:not(.is-active) { box-shadow: inset 0 -11px 0 var(--orange), 0 3px 0 #111; }
 
 .main-grid { display: grid; grid-template-columns: minmax(0, 1.82fr) minmax(280px, 1fr); gap: 14px; margin-top: 14px; }
 .pitch-display { min-height: 310px; display: grid; grid-template-columns: 34% 66%; grid-template-rows: 1fr auto; padding: 18px; background: var(--screen); border-bottom: 1px solid var(--line); }
@@ -118,6 +143,7 @@ footer { display: flex; justify-content: space-between; gap: 15px; margin-top: 1
   .function-row { grid-template-columns: repeat(3, 1fr); gap: 7px; }
   .input-label { grid-column: 1 / -1; }
   .function-pad { min-height: 58px; }
+  .mode-switch button { min-height: 42px; }
   .pitch-display { grid-template-columns: 40% 60%; padding: 12px; min-height: 235px; }
   .note-readout { font-size: clamp(5.4rem, 28vw, 7.4rem); }
   .meter-wrap { align-items: center; }
@@ -128,6 +154,10 @@ footer { display: flex; justify-content: space-between; gap: 15px; margin-top: 1
   .diagnostic-grid { padding: 0 10px; }
   .piano-meta { align-items: flex-start; }
   .piano-meta small { max-width: 220px; }
+  .pitch-mod-controls { grid-template-columns: 1fr auto; gap: 7px; }
+  .pitch-mod-ranges { grid-column: 1 / -1; }
+  .pitch-mod-ranges button { flex: 1; min-height: 38px; }
+  #pitch-mod-center { min-height: 38px; }
   footer { flex-direction: column; gap: 3px; }
 }
 
@@ -136,6 +166,6 @@ footer { display: flex; justify-content: space-between; gap: 15px; margin-top: 1
 }
 
 @media (forced-colors: active) {
-  .function-pad, .engine-button, .mic-button, .piano-key { forced-color-adjust: auto; }
+  .function-pad, .engine-button, .mic-button, .piano-key, .pitch-mod-controls button, #pitch-mod-control { forced-color-adjust: auto; }
   .progress-track span, .level-track span, .meter-needle { background: Highlight; stroke: Highlight; }
 }

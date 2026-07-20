@@ -1,0 +1,69 @@
+.practice-loading { margin-top: 14px; padding: 28px; color: var(--muted); text-align: center; font-size: 0.72rem; letter-spacing: 0.08em; }
+.practice-key-panel { margin-top: 0; }
+.practice-controls { display: grid; grid-template-columns: minmax(130px, 0.8fr) minmax(180px, 1fr) minmax(180px, 1fr) minmax(230px, 1.6fr); gap: 10px; padding: 14px; }
+.key-select-label, .key-signature-card { min-height: 74px; display: flex; flex-direction: column; justify-content: space-between; gap: 6px; padding: 9px; border: 1px solid #99968b; background: #e6e2d6; }
+.key-select-label > span, .key-signature-card small { color: var(--muted); font-size: 0.58rem; font-weight: 900; letter-spacing: 0.06em; }
+.key-select-label select { width: 100%; border: 0; border-bottom: 2px solid var(--line); border-radius: 0; background: transparent; color: var(--ink); font: inherit; font-size: 1.2rem; font-weight: 900; }
+.key-signature-card strong { font-size: 0.9rem; }
+.key-signature-card span { color: var(--muted); font-size: 0.58rem; line-height: 1.35; }
+.segmented-control { min-height: 74px; display: grid; grid-template-columns: 1fr 1fr; gap: 5px; padding: 5px; border: 1px solid #99968b; background: #e6e2d6; }
+.segmented-control button { border: 1px solid transparent; background: transparent; color: var(--muted); font-size: 0.67rem; font-weight: 900; cursor: pointer; }
+.segmented-control button[aria-pressed="true"] { border-color: var(--line); background: var(--yellow); color: var(--ink); box-shadow: 0 2px 0 var(--line); }
+.harmony-lane-panel { margin-top: 12px; }
+.harmony-lane-head { min-height: 52px; display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 9px 13px; border-bottom: 1px solid var(--line); background: #d4d0c4; }
+.harmony-lane-head div { display: flex; flex-direction: column; gap: 3px; }
+.harmony-lane-head strong { font-size: 0.71rem; letter-spacing: 0.04em; }
+.harmony-lane-head small { color: var(--muted); font-size: 0.57rem; }
+.harmony-lane-head > span { font-size: 1.25rem; font-weight: 900; }
+.harmony-lane { display: flex; gap: 8px; overflow-x: auto; overscroll-behavior-inline: contain; padding: 12px; scrollbar-color: #595b53 #cbc8bd; }
+.chord-card { min-width: 126px; min-height: 90px; display: flex; flex: 1 0 126px; flex-direction: column; align-items: flex-start; justify-content: space-between; gap: 4px; padding: 10px; border: 1.5px solid var(--line); border-radius: 5px; background: #e8e4d8; box-shadow: 0 3px 0 #363731; cursor: pointer; text-align: left; }
+.chord-card small { color: var(--muted); font-size: 0.6rem; }
+.chord-card strong { font-size: 1.05rem; overflow-wrap: anywhere; }
+.chord-card span { color: var(--muted); font-size: 0.57rem; }
+.chord-card.is-selected { background: var(--yellow); box-shadow: 0 1px 0 #363731; transform: translateY(2px); }
+[data-lane="color"] .chord-card { background: #d5e0d2; }
+[data-lane="color"] .chord-card.is-selected { background: var(--mint); }
+[data-lane="related"] .chord-card { background: #d9e2e9; }
+[data-lane="related"] .chord-card.is-selected { background: var(--blue); }
+.practice-detail-grid { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(330px, 0.75fr); gap: 12px; margin-top: 12px; }
+.selected-chord-body, .target-body { padding: 14px; }
+.selected-chord-body { display: grid; grid-template-columns: minmax(120px, 0.55fr) minmax(190px, 1fr); gap: 15px; }
+.selected-chord-symbol { display: flex; flex-direction: column; justify-content: center; padding: 12px; border: 1px solid var(--line); background: var(--screen); }
+.selected-chord-symbol small, .selected-chord-copy small, .target-readout small { color: var(--muted); font-size: 0.58rem; }
+.selected-chord-symbol strong { font-size: clamp(2rem, 5vw, 3.5rem); line-height: 1; overflow-wrap: anywhere; }
+.selected-chord-symbol span { margin-top: 8px; font-size: 0.62rem; }
+.selected-chord-copy { display: grid; gap: 10px; }
+.selected-chord-copy div { display: flex; flex-direction: column; gap: 3px; padding-bottom: 8px; border-bottom: 1px solid #aaa79c; }
+.selected-chord-copy p { margin: 0; color: var(--muted); font-size: 0.67rem; line-height: 1.45; }
+.audition-controls { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; grid-column: 1 / -1; }
+.audition-controls button, .target-tone-buttons button, .octave-controls button { min-height: 40px; border: 1.5px solid var(--line); border-radius: 4px; background: var(--paper); box-shadow: 0 3px 0 var(--line); font-size: 0.64rem; font-weight: 900; cursor: pointer; }
+.audition-controls button { background: var(--orange); }
+.target-body { display: grid; gap: 11px; }
+.target-tone-buttons { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 3px; }
+.target-tone-buttons button { min-width: 47px; padding: 0 10px; }
+.target-tone-buttons button[aria-pressed="true"] { background: var(--yellow); transform: translateY(2px); box-shadow: 0 1px 0 var(--line); }
+.octave-controls { display: grid; grid-template-columns: 1fr 40px 42px 40px; align-items: center; gap: 6px; color: var(--muted); font-size: 0.62rem; }
+.octave-controls strong { color: var(--ink); text-align: center; font-size: 1.15rem; }
+.target-readout { display: grid; grid-template-columns: repeat(2, 1fr); gap: 7px; }
+.target-readout div { display: flex; flex-direction: column; gap: 3px; padding: 8px; border: 1px solid #aaa79c; }
+.target-readout strong { font-size: 0.86rem; }
+.practice-result { padding: 13px; border: 2px solid var(--line); background: #d7d3c7; font-size: 1.18rem; font-weight: 900; letter-spacing: 0.08em; text-align: center; }
+.practice-result[data-status="locked"] { background: var(--mint); }
+.practice-result[data-status="close"] { background: var(--yellow); }
+.practice-result[data-status="retry"] { background: var(--orange); }
+.practice-hint { margin: 0; color: var(--muted); font-size: 0.57rem; line-height: 1.45; }
+.practice-piano-anchor { margin-top: 12px; }
+
+@media (max-width: 860px) {
+  .practice-controls { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .key-signature-card { grid-column: 1 / -1; }
+  .practice-detail-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 540px) {
+  .practice-controls { grid-template-columns: 1fr; padding: 10px; }
+  .key-signature-card { grid-column: auto; }
+  .selected-chord-body { grid-template-columns: 1fr; padding: 10px; }
+  .audition-controls { grid-column: auto; }
+  .chord-card { min-width: 116px; flex-basis: 116px; }
+}

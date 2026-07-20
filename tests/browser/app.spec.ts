@@ -1,31 +1,112 @@
 import { expect, test } from '@playwright/test';
 
-test('starts private, Light, and without Neural network requests', async ({ page }) => {
+test('starts private, Light, Tuning, and without optional network requests', async ({ page }) => {
   const neuralRequests: string[] = [];
+  const practiceRequests: string[] = [];
   const pageErrors: string[] = [];
   page.on('pageerror', (error) => pageErrors.push(error.message));
   page.on('request', (request) => {
     if (/onnx|ort-wasm|neural-worker|ai-manifest/i.test(request.url())) neuralRequests.push(request.url());
+    if (/practice-workspace|harmony|target-comparator/i.test(request.url())) practiceRequests.push(request.url());
   });
   await page.goto('/');
-  await expect(page.getByText('PITCH/LAB 01')).toBeVisible();
+  await expect(page.getByText('PITCH/LAB 02')).toBeVisible();
   await expect(page.getByRole('button', { name: /MIC START/ })).toBeVisible();
   await expect(page.getByRole('button', { name: /LIGHT DSP/ })).toHaveClass(/is-selected/);
+  await expect(page.getByRole('tab', { name: 'TUNING' })).toHaveAttribute('aria-selected', 'true');
   await expect(page.getByText(/PCM IS NOT UPLOADED OR SAVED/)).toBeVisible();
   expect(neuralRequests).toEqual([]);
+  expect(practiceRequests).toEqual([]);
   expect(pageErrors).toEqual([]);
 });
 
-test('reference keyboard spans three octaves, supports ASDF controls, and updates its range', async ({ page }) => {
+test('loads Practice on demand and renders key-aware harmony lanes', async ({ page }) => {
+  const practiceRequests: string[] = [];
+  page.on('request', (request) => {
+    if (/practice-workspace/i.test(request.url())) practiceRequests.push(request.url());
+  });
+  await page.goto('/');
+  expect(practiceRequests).toEqual([]);
+  await page.getByRole('tab', { name: 'TUNING' }).focus();
+  await page.keyboard.press('ArrowRight');
+  await expect(page.getByRole('heading', { name: /KEY & HARMONY/ })).toBeVisible();
+  await expect(page.getByText('COLOR / TENSION', { exact: true })).toBeVisible();
+  await expect(page.getByText('DIATONIC CORE', { exact: true })).toBeVisible();
+  await expect(page.getByText('RELATED / BORROWED', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: /Imaj7 Cmaj7/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: /V\/ii A7/ })).toBeVisible();
+  expect(practiceRequests.length).toBeGreaterThan(0);
+
+  await page.getByLabel('KEY', { exact: true }).selectOption('5');
+  await expect(page.getByRole('button', { name: 'Imaj7 Fmaj7', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'IVmaj7 B♭maj7', exact: true })).toBeVisible();
+
+  await page.getByLabel('KEY', { exact: true }).selectOption('6');
+  await expect(page.getByRole('button', { name: 'Imaj7 F♯maj7', exact: true })).toBeVisible();
+  await expect(page.locator('#selected-chord-notes')).toContainText('E♯');
+
+  await page.getByRole('button', { name: 'MINOR' }).click();
+  await page.getByLabel('KEY', { exact: true }).selectOption('3');
+  await expect(page.getByRole('button', { name: 'i7 E♭m7', exact: true })).toBeVisible();
+  await expect(page.locator('#selected-chord-notes')).toContainText('G♭');
+  await expect(page.locator('.piano-key.is-chord-root')).toHaveCount(3);
+  await expect(page.locator('.piano-key')).toHaveCount(36);
+
+  await page.getByRole('tab', { name: 'TUNING' }).click();
+  await expect(page.locator('#tuning-workspace')).toBeVisible();
+  await expect(page.locator('#practice-workspace')).toBeHidden();
+});
+
+test('grades an A-minor tonic target without restarting the microphone', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop-chromium');
+  await page.goto('/');
+  await page.getByRole('button', { name: /MIC START/ }).click();
+  await expect(page.getByRole('button', { name: /STOP MIC/ })).toBeVisible({ timeout: 10_000 });
+  await expect(page.locator('#note-name')).toHaveText('A', { timeout: 10_000 });
+  await page.getByRole('tab', { name: 'PRACTICE' }).click();
+  await page.getByRole('button', { name: 'MINOR' }).click();
+  await page.getByLabel('KEY', { exact: true }).selectOption('9');
+  await page.getByRole('button', { name: /i7 Am7/ }).click();
+  await page.getByRole('button', { name: 'TARGET A' }).click();
+  await expect(page.locator('#practice-result')).toHaveText('LOCKED', { timeout: 10_000 });
+  await expect(page.getByRole('button', { name: /STOP MIC/ })).toBeVisible();
+  await page.getByRole('tab', { name: 'TUNING' }).click();
+  await expect(page.locator('#note-name')).toHaveText('A', { timeout: 10_000 });
+  await expect(page.getByRole('button', { name: /STOP MIC/ })).toBeVisible();
+});
+
+test('chord audition gates grading and returns to listening after its release tail', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop-chromium');
+  await page.goto('/');
+  await page.getByRole('tab', { name: 'PRACTICE' }).click();
+  const keyboardC4 = page.locator('.piano-key[data-midi="60"]');
+  await page.keyboard.down('a');
+  await expect(keyboardC4).toHaveClass(/is-active/);
+  await page.getByRole('button', { name: '▶ CHORD' }).click();
+  await expect(keyboardC4).not.toHaveClass(/is-active/);
+  await page.keyboard.up('a');
+  await expect(page.locator('#app')).toHaveClass(/is-reference-playing/);
+  await expect(page.locator('.piano-key')).toHaveCount(36);
+  await expect(page.locator('#app')).not.toHaveClass(/is-reference-playing/, { timeout: 3_000 });
+  await expect(page.locator('#practice-result')).toHaveText('MIC OFF');
+});
+
+test('reference keyboard spans three octaves, supports polyphonic ASDF controls, and shifts its range', async ({ page }) => {
   await page.goto('/');
   await expect(page.locator('.piano-key')).toHaveCount(36);
   await expect(page.locator('.piano-key[data-midi="83"]')).toBeAttached();
   const keyboardC4 = page.locator('.piano-key[data-midi="60"]');
+  const keyboardD4 = page.locator('.piano-key[data-midi="62"]');
   await expect(keyboardC4.locator('kbd')).toHaveText('A');
   await page.keyboard.down('a');
+  await page.keyboard.down('s');
   await expect(keyboardC4).toHaveClass(/is-active/);
+  await expect(keyboardD4).toHaveClass(/is-active/);
   await page.keyboard.up('a');
   await expect(keyboardC4).not.toHaveClass(/is-active/);
+  await expect(keyboardD4).toHaveClass(/is-active/);
+  await page.keyboard.up('s');
+  await expect(keyboardD4).not.toHaveClass(/is-active/);
 
   const a4 = page.getByRole('button', { name: /A4, 440\.00 hertz/ });
   await expect(a4).toBeVisible();
@@ -35,17 +116,55 @@ test('reference keyboard spans three octaves, supports ASDF controls, and update
   await a4.click();
   await expect(page.locator('#signal-state')).toHaveText('MIC OFF', { timeout: 2_000 });
   await expect(page.locator('#tuning-state')).toHaveText('MIC OFF');
-  await page.getByRole('button', { name: /OCTAVE/ }).click();
+  await page.getByRole('button', { name: 'Shift reference keyboard up one octave' }).click();
   await expect(page.getByText('C4–B6')).toBeVisible();
-  await expect(page.getByRole('button', { name: /OCTAVE 4–6/ })).toBeVisible();
+  await expect(page.locator('#octave-value')).toHaveText('4–6');
+  await page.keyboard.press('-');
+  await expect(page.getByText('C3–B5')).toBeVisible();
+  await page.keyboard.press('Shift+=');
+  await expect(page.getByText('C4–B6')).toBeVisible();
+});
+
+test('pitch modulation is shared by Tuning and Practice with selectable range and center reset', async ({ page }) => {
+  await page.goto('/');
+  const modulation = page.getByRole('group', { name: 'Pitch modulation' });
+  const wheel = page.getByRole('slider', { name: 'Pitch modulation amount' });
+  await expect(modulation).toBeVisible();
+  await expect(page.locator('#pitch-mod-value')).toHaveText('±0 cent');
+
+  await page.keyboard.down('ArrowUp');
+  await expect(page.locator('#pitch-mod-value')).toHaveText('+20 cent');
+  await page.keyboard.up('ArrowUp');
+  await expect(page.locator('#pitch-mod-value')).toHaveText('±0 cent');
+
+  await wheel.evaluate((element) => {
+    const input = element as HTMLInputElement;
+    input.value = '50';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await expect(page.locator('#pitch-mod-value')).toHaveText('+100 cent');
+  await page.getByRole('button', { name: 'Use twelve semitone pitch modulation range' }).click();
+  await expect(page.locator('#pitch-mod-value')).toHaveText('+600 cent');
+  await page.getByRole('button', { name: 'Center pitch modulation' }).click();
+  await expect(page.locator('#pitch-mod-value')).toHaveText('±0 cent');
+
+  await page.getByRole('tab', { name: 'PRACTICE' }).click();
+  await expect(modulation).toBeVisible();
 });
 
 test('mobile layout does not overflow the viewport', async ({ page }, testInfo) => {
   test.skip(!testInfo.project.name.startsWith('mobile-'));
+  await page.setViewportSize({ width: 320, height: 760 });
   await page.goto('/');
-  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
-  expect(overflow).toBeLessThanOrEqual(1);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
   await expect(page.getByRole('button', { name: /MIC START/ })).toBeVisible();
+  await page.getByRole('tab', { name: 'PRACTICE' }).click();
+  await expect(page.getByRole('heading', { name: /KEY & HARMONY/ })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
+  const lane = page.locator('[data-lane="core"]');
+  const dimensions = await lane.evaluate((element) => ({ clientWidth: element.clientWidth, scrollWidth: element.scrollWidth }));
+  expect(dimensions.scrollWidth).toBeGreaterThan(dimensions.clientWidth);
+  expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBeGreaterThan(760);
 });
 
 test('mobile keyboard scrolls horizontally when swiping across keys', async ({ page, context }, testInfo) => {
@@ -62,6 +181,7 @@ test('mobile keyboard scrolls horizontally when swiping across keys', async ({ p
 
   await piano.evaluate((element) => { element.scrollLeft = 0; });
   const key = page.locator('.white-key').nth(3);
+  await key.scrollIntoViewIfNeeded();
   const box = await key.boundingBox();
   expect(box).not.toBeNull();
   const startX = Math.round(box!.x + box!.width / 2);
@@ -82,6 +202,7 @@ test('mobile keyboard scrolls horizontally when swiping across keys', async ({ p
   await piano.evaluate((element) => { element.scrollLeft = 0; });
   const verticalKeyBox = await key.boundingBox();
   expect(verticalKeyBox).not.toBeNull();
+  const pageScrollBeforeGesture = await page.evaluate(() => window.scrollY);
   const verticalX = Math.round(verticalKeyBox!.x + verticalKeyBox!.width / 2);
   const verticalY = Math.round(verticalKeyBox!.y + verticalKeyBox!.height * 0.65);
   await client.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: verticalX, y: verticalY }] });
@@ -93,7 +214,7 @@ test('mobile keyboard scrolls horizontally when swiping across keys', async ({ p
   }
   await client.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
 
-  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(100);
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(pageScrollBeforeGesture + 100);
   await expect(piano.locator('.piano-key.is-active')).toHaveCount(0);
 });
 

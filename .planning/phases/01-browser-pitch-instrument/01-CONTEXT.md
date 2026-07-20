@@ -10,7 +10,7 @@ Deliver one complete browser instrument: live monophonic pitch display, local Li
 - D-03: Neural uses pinned SwiftF0 v0.1.1 and ONNX Runtime Web WASM CPU, one thread on iOS.
 - D-04: Neural JavaScript, WASM, glue, and model load only after explicit user selection.
 - D-05: Keep the product label `NEURAL` until benchmark evidence passes the accuracy naming gate.
-- D-06: Use a 24-key, monophonic sine reference keyboard with a detector gate.
+- D-06: The shipped V1 now uses a selectable 36-key, monophonic triangle reference keyboard with center-octave physical-key controls and a detector gate.
 - D-07: Enforce the product-spec raw and compressed size budgets in the build.
 - D-08: Microphone PCM is ephemeral and never transmitted or persisted.
 </decisions>
@@ -29,4 +29,3 @@ Greenfield repository. Reuse platform Web Audio primitives, Pitchy 4.1.0, ONNX R
 <scope_fence>
 No PDF, score grading, choir-part extraction, backend, authentication, upload, polyphonic analysis, sampled piano, or MIDI in this phase.
 </scope_fence>
-

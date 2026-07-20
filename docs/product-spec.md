@@ -1,12 +1,12 @@
 # PITCH/LAB 01 product spec
 
-Status: approved for implementation on 2026-07-19.
+Status: approved for implementation on 2026-07-19; V1 keyboard baseline amended on 2026-07-20.
 
 The full reviewed source document is `/Users/deck/.gstack/projects/Dev/deck-unknown-design-20260719-140225.md`. It passed three adversarial review rounds with 37 findings resolved. This file is the repository-local execution contract.
 
 ## Product
 
-PITCH/LAB 01 is an install-free, responsive web instrument that identifies a single sung or played pitch from a desktop or mobile microphone. It shows note name with octave, frequency, cents from equal temperament, confidence, input level, processing age, and a four-second pitch trail. A two-octave monophonic reference keyboard produces exact sine tones.
+PITCH/LAB 01 is an install-free, responsive web instrument that identifies a single sung or played pitch from a desktop or mobile microphone. It shows note name with octave, frequency, cents from equal temperament, confidence, input level, processing age, and a four-second pitch trail. A selectable three-octave monophonic reference keyboard produces exact speaker-friendly triangle tones and maps the center range to physical ASDF-style controls.
 
 ## Release scope
 
@@ -14,7 +14,7 @@ PITCH/LAB 01 is an install-free, responsive web instrument that identifies a sin
 - `NEURAL` is selectable now, loads SwiftF0 v0.1.1 plus ONNX Runtime Web only after explicit selection, and falls back to Light on failure or poor performance.
 - All microphone analysis stays inside the browser. No account, API, database, upload, or audio persistence.
 - Desktop and mobile layouts use a clean retro-industrial instrument language: warm shell, charcoal labels, colored function pads, mono numeric display, no copied logos or product trade dress.
-- PDF score reading, target-note grading, and choir-part separation are deferred.
+- V2 P1 adds a lazy-loaded key-aware PRACTICE workspace with chord audition and monophonic target-note grading. PDF score reading and choir-part separation remain deferred to P2.
 
 ## Audio contract
 
@@ -59,4 +59,4 @@ PITCH/LAB 01 is an install-free, responsive web instrument that identifies a sin
 2. Light works before and after every neural load, cancel, incompatibility, and runtime error.
 3. No ONNX JavaScript, WASM, glue module, or model request occurs before the user selects Neural.
 4. Each reference key is within 0.1 cent of its 12-TET frequency, only one oscillator exists, and no voice sticks after release.
-5. The production build passes unit, worker, browser smoke, and separate initial/neural bundle-budget checks.
+5. The production build passes unit, worker, browser smoke, and separate initial/practice/neural bundle-budget checks.
