@@ -49,16 +49,16 @@
 
 ### P2 — Structured score game and choir parts
 
-- [ ] **SCR-01**: User can import `.musicxml`, `.xml`, and `.mxl` locally and see a validation report before practice.
+- [x] **SCR-01**: User can import `.musicxml`, `.xml`, and `.mxl` locally and see a validation report before practice.
 - [ ] **SCR-02**: The normalized score preserves parts, voices, staves, written/sounding pitch, keys, meter, tempo, pickup, ties, tuplets, lyrics, and simple repeats.
-- [ ] **SCR-03**: Unsupported or ambiguous jumps and polyphonic target moments are visible warnings, never silent guesses.
+- [x] **SCR-03**: Unsupported or ambiguous jumps and polyphonic target moments are visible warnings, never silent guesses.
 - [ ] **GAME-01**: User can count in, change tempo, loop measures, and follow a score cursor and game lane driven by the Web Audio clock.
 - [ ] **GAME-02**: User receives latency-compensated per-note pitch, onset, sustain, and phrase feedback from the existing monophonic detector.
-- [ ] **CHOIR-01**: User can directly choose separately encoded S/A/T/B parts.
+- [x] **CHOIR-01**: User can directly choose separately encoded S/A/T/B parts.
 - [ ] **CHOIR-02**: User can inspect and correct staff/voice-based SATB suggestions with confidence and range/lyric previews.
 - [ ] **PDF-01**: User can opt in to printed PDF/image OMR, review/correct the MusicXML result, and only then start grading.
-- [ ] **PRIV-02**: MusicXML remains local; PDF OMR never receives microphone audio and deletes temporary score files under a documented TTL.
-- [ ] **WGT-02**: Score renderer, MXL decoder, and OMR assets are absent from initial TUNING and PRACTICE network graphs.
+- [x] **PRIV-02**: MusicXML and PDF recognition remain local; the OMR path never receives microphone audio or creates a server-side temporary score file.
+- [x] **WGT-02**: Score renderer, MXL decoder, and OMR assets are absent from initial TUNING and PRACTICE network graphs.
 - [ ] **REL2-01**: Unit, fixture, E2E, asset, and physical iPhone/Android checks cover practice and score flows.
 
 ## Out of Scope

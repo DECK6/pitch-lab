@@ -2,12 +2,12 @@
   "schema_version": 1,
   "milestone": "M2",
   "phase": "P2",
-  "gate": "v2_preview_verification",
-  "status": "in_progress",
+  "gate": "physical_device_and_accuracy_feedback",
+  "status": "preview_deployed",
   "owner_runtime": "codex",
   "acceptance_criteria": [
     "MusicXML/XML/MXL import remains local and normalizes to a renderer-independent score model",
-    "The score game uses the Web Audio clock and handles key changes, pickup, ties, and simple repeats",
+    "The score game uses the Web Audio clock and handles key changes, pickup, and ties while unexpanded repeats become blocking warnings",
     "Direct and condensed choir parts expose confidence and manual mapping before grading",
     "PDF recognition stays local, loads only after explicit selection, and requires correction confirmation",
     "PDF recognition creates no server upload or persisted microphone/score payload",
@@ -34,8 +34,18 @@
     {
       "type": "test",
       "path": "tests/browser/app.spec.ts",
-      "result": "MusicXML and printed PDF preview flows pass desktop Chromium browser checks"
+      "result": "83 unit tests and 30 browser checks passed across desktop Chromium, mobile Chromium, and mobile WebKit"
+    },
+    {
+      "type": "bundle",
+      "path": "scripts/check-bundle-budget.mjs",
+      "result": "initial 79 KB raw, score 116 KB raw, PDF OMR 1,596 KB raw, and neural 13,969 KB raw in separate graphs"
+    },
+    {
+      "type": "deployment",
+      "url": "https://dexa.art/pitch-lab-v2/",
+      "result": "V2-only preview deployed from adxdeck commit 7db4a0c; /pitchlab retained index-DJJWCN4J.js"
     }
   ],
-  "updated_at": "2026-07-22T13:34:47Z"
+  "updated_at": "2026-07-22T13:51:00Z"
 }
