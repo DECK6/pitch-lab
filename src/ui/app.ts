@@ -6,6 +6,7 @@ import { frequencyToNote } from '../music/pitch-math';
 import { ReferenceTone } from '../piano/reference-tone';
 import { PianoView } from './piano';
 import type { PracticeWorkspace } from './practice/practice-workspace';
+import type { ScoreWorkspace } from './score/score-workspace';
 import { PitchTrail } from './trail';
 
 const stateLabels: Record<AudioSessionState, string> = {
@@ -39,6 +40,8 @@ export class App {
   private readonly pianoPanel: HTMLElement;
   private practice: PracticeWorkspace | null = null;
   private practiceLoading: Promise<PracticeWorkspace> | null = null;
+  private score: ScoreWorkspace | null = null;
+  private scoreLoading: Promise<ScoreWorkspace> | null = null;
   private currentMode: AppMode = 'tuning';
   private currentState: AudioSessionState = 'idle';
   private gated = false;
@@ -91,6 +94,7 @@ export class App {
     this.get<HTMLButtonElement>('neural-cancel').addEventListener('click', () => this.session.cancelNeural());
     this.get<HTMLButtonElement>('mode-tuning').addEventListener('click', () => this.modeStore.set('tuning'));
     this.get<HTMLButtonElement>('mode-practice').addEventListener('click', () => this.modeStore.set('practice'));
+    this.get<HTMLButtonElement>('mode-score').addEventListener('click', () => this.modeStore.set('score'));
     this.root.querySelector('.mode-switch')?.addEventListener('keydown', (event) => this.handleModeKeydown(event as KeyboardEvent));
     window.addEventListener('pagehide', () => {
       void this.session.stop();
@@ -99,11 +103,17 @@ export class App {
   }
 
   private handleModeKeydown(event: KeyboardEvent): void {
-    const next = event.key === 'ArrowLeft' || event.key === 'Home'
-      ? 'tuning'
-      : event.key === 'ArrowRight' || event.key === 'End'
-        ? 'practice'
-        : null;
+    const modes: AppMode[] = ['tuning', 'practice', 'score'];
+    const currentIndex = modes.indexOf(this.currentMode);
+    const next = event.key === 'Home'
+      ? modes[0]
+      : event.key === 'End'
+        ? modes[modes.length - 1]
+        : event.key === 'ArrowLeft'
+          ? modes[(currentIndex - 1 + modes.length) % modes.length]
+          : event.key === 'ArrowRight'
+            ? modes[(currentIndex + 1) % modes.length]
+            : null;
     if (!next) return;
     event.preventDefault();
     this.modeStore.set(next);
@@ -117,6 +127,7 @@ export class App {
     button.classList.toggle('is-active', state === 'running');
     button.textContent = state === 'running' ? '● STOP MIC' : state === 'requesting_permission' || state === 'starting' ? '× CANCEL' : state === 'suspended' || state === 'needs_resume_tap' ? '▶ RESUME MIC' : '● MIC START';
     if (message) this.announce(message);
+    this.score?.setMicrophoneState(state);
     if (state !== 'running' && state !== 'starting') {
       this.clearPitch(message ?? stateLabels[state]);
       this.practice?.reset(stateLabels[state]);
@@ -126,6 +137,7 @@ export class App {
   private updatePitch(frame: PitchFrame): void {
     if (this.gated) return;
     this.practice?.updatePitch(frame);
+    this.score?.updatePitch(frame);
     this.lastFrameAt = performance.now();
     this.setText('signal-db', Number.isFinite(frame.rmsDb) ? `${Math.round(frame.rmsDb)} dB` : '— dB');
     this.setText('confidence-value', frame.confidenceBand.toUpperCase());
@@ -160,34 +172,49 @@ export class App {
     this.currentMode = mode;
     const tuning = this.get('tuning-workspace');
     const practiceHost = this.get('practice-workspace');
-    const tuningTab = this.get<HTMLButtonElement>('mode-tuning');
-    const practiceTab = this.get<HTMLButtonElement>('mode-practice');
-    const isPractice = mode === 'practice';
+    const scoreHost = this.get('score-workspace');
+    const modes: AppMode[] = ['tuning', 'practice', 'score'];
+    modes.forEach((candidate) => {
+      const selected = mode === candidate;
+      const tab = this.get<HTMLButtonElement>(`mode-${candidate}`);
+      tab.setAttribute('aria-selected', String(selected));
+      tab.tabIndex = selected ? 0 : -1;
+    });
+    this.practice?.setActive(mode === 'practice');
+    this.score?.setActive(mode === 'score');
+    tuning.hidden = mode !== 'tuning';
+    practiceHost.hidden = mode !== 'practice';
+    scoreHost.hidden = mode !== 'score';
+    this.setText('work-mode-value', mode === 'tuning' ? 'FREE INPUT' : mode === 'practice' ? 'KEY / CHORD' : 'SCORE GAME');
 
-    tuningTab.setAttribute('aria-selected', String(!isPractice));
-    practiceTab.setAttribute('aria-selected', String(isPractice));
-    tuningTab.tabIndex = isPractice ? -1 : 0;
-    practiceTab.tabIndex = isPractice ? 0 : -1;
-    this.setText('work-mode-value', isPractice ? 'KEY / CHORD' : 'FREE INPUT');
-
-    if (!isPractice) {
-      this.practice?.setActive(false);
+    if (mode === 'tuning') {
       tuning.hidden = false;
-      practiceHost.hidden = true;
       this.get('tuning-piano-anchor').append(this.pianoPanel);
       return;
     }
 
-    tuning.hidden = true;
-    practiceHost.hidden = false;
+    if (mode === 'practice') {
+      try {
+        const practice = await this.loadPractice();
+        if (this.currentMode !== 'practice') return;
+        this.get('practice-piano-anchor').append(this.pianoPanel);
+        practice.setActive(true);
+      } catch (error) {
+        const detail = error instanceof Error ? error.message : 'Unknown module error';
+        this.announce(`Practice mode could not start: ${detail}`);
+        this.modeStore.set('tuning');
+      }
+      return;
+    }
+
     try {
-      const practice = await this.loadPractice();
-      if (this.currentMode !== 'practice') return;
-      this.get('practice-piano-anchor').append(this.pianoPanel);
-      practice.setActive(true);
+      const score = await this.loadScore();
+      if (this.currentMode !== 'score') return;
+      score.setMicrophoneState(this.currentState);
+      score.setActive(true);
     } catch (error) {
       const detail = error instanceof Error ? error.message : 'Unknown module error';
-      this.announce(`Practice mode could not start: ${detail}`);
+      this.announce(`Score mode could not start: ${detail}`);
       this.modeStore.set('tuning');
     }
   }
@@ -208,6 +235,30 @@ export class App {
         this.practiceLoading = null;
       });
     return this.practiceLoading;
+  }
+
+  private loadScore(): Promise<ScoreWorkspace> {
+    if (this.score) return Promise.resolve(this.score);
+    if (this.scoreLoading) return this.scoreLoading;
+    const host = this.get('score-workspace');
+    host.innerHTML = '<section class="panel score-loading" aria-live="polite">LOADING SCORE MODULE…</section>';
+    this.scoreLoading = import('./score/score-workspace')
+      .then(({ ScoreWorkspace: Workspace }) => {
+        host.innerHTML = '';
+        const score = new Workspace(host, {
+          ensureMicrophone: async () => {
+            if (this.currentState !== 'running') await this.session.start();
+            if (this.currentState !== 'running') throw new Error('Microphone is not running.');
+          },
+          nowSeconds: () => this.session.currentTimeSeconds,
+        });
+        this.score = score;
+        return score;
+      })
+      .finally(() => {
+        this.scoreLoading = null;
+      });
+    return this.scoreLoading;
   }
 
   private clearPitch(reason: string, clearTrail = true): void {
@@ -290,6 +341,7 @@ function shellMarkup(): string {
       <nav class="mode-switch" role="tablist" aria-label="Work mode">
         <button id="mode-tuning" type="button" role="tab" aria-selected="true" aria-controls="tuning-workspace">TUNING</button>
         <button id="mode-practice" type="button" role="tab" aria-selected="false" aria-controls="practice-workspace" tabindex="-1">PRACTICE</button>
+        <button id="mode-score" type="button" role="tab" aria-selected="false" aria-controls="score-workspace" tabindex="-1">SCORE</button>
       </nav>
 
       <div class="function-row" aria-label="Instrument status">
@@ -380,6 +432,7 @@ function shellMarkup(): string {
       </div>
 
       <div id="practice-workspace" class="workspace" role="tabpanel" aria-labelledby="mode-practice" hidden></div>
+      <div id="score-workspace" class="workspace" role="tabpanel" aria-labelledby="mode-score" hidden></div>
 
       <footer><span>ALL AUDIO PROCESSED ON THIS DEVICE</span><span id="footer-engine">ENGINE: LIGHT DSP</span></footer>
       <div id="app-message" class="sr-status" role="status" aria-live="polite">Microphone audio stays on this device.</div>

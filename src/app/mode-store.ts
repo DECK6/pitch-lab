@@ -1,11 +1,11 @@
-export type AppMode = 'tuning' | 'practice';
+export type AppMode = 'tuning' | 'practice' | 'score';
 
 const STORAGE_KEY = 'pitch-lab-mode';
 
 type ModeStorage = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
 
 function isAppMode(value: string | null): value is AppMode {
-  return value === 'tuning' || value === 'practice';
+  return value === 'tuning' || value === 'practice' || value === 'score';
 }
 
 export class ModeStore {

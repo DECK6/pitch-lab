@@ -25,11 +25,13 @@ describe('ModeStore', () => {
     store.set('practice');
     expect(store.current).toBe('practice');
     expect(new ModeStore(storage).current).toBe('practice');
+    store.set('score');
+    expect(new ModeStore(storage).current).toBe('score');
   });
 
   it('discards corrupt persisted values', () => {
     const storage = new MemoryStorage();
-    storage.setItem('pitch-lab-mode', 'score');
+    storage.setItem('pitch-lab-mode', 'unknown');
     expect(new ModeStore(storage).current).toBe('tuning');
     expect(storage.getItem('pitch-lab-mode')).toBeNull();
   });

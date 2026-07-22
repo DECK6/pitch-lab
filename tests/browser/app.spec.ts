@@ -3,11 +3,13 @@ import { expect, test } from '@playwright/test';
 test('starts private, Light, Tuning, and without optional network requests', async ({ page }) => {
   const neuralRequests: string[] = [];
   const practiceRequests: string[] = [];
+  const scoreRequests: string[] = [];
   const pageErrors: string[] = [];
   page.on('pageerror', (error) => pageErrors.push(error.message));
   page.on('request', (request) => {
     if (/onnx|ort-wasm|neural-worker|ai-manifest/i.test(request.url())) neuralRequests.push(request.url());
     if (/practice-workspace|harmony|target-comparator/i.test(request.url())) practiceRequests.push(request.url());
+    if (/score-workspace|musicxml-import|pdf-omr|pdf\.worker/i.test(request.url())) scoreRequests.push(request.url());
   });
   await page.goto('/');
   await expect(page.getByText('PITCH/LAB 02')).toBeVisible();
@@ -17,7 +19,99 @@ test('starts private, Light, Tuning, and without optional network requests', asy
   await expect(page.getByText(/PCM IS NOT UPLOADED OR SAVED/)).toBeVisible();
   expect(neuralRequests).toEqual([]);
   expect(practiceRequests).toEqual([]);
+  expect(scoreRequests).toEqual([]);
   expect(pageErrors).toEqual([]);
+});
+
+test('loads Score on demand and arms a structured SATB line for the rhythm lane', async ({ page }) => {
+  const scoreRequests: string[] = [];
+  const parserRequests: string[] = [];
+  const pdfRequests: string[] = [];
+  page.on('request', (request) => {
+    if (/score-workspace/i.test(request.url())) scoreRequests.push(request.url());
+    if (/musicxml-import/i.test(request.url())) parserRequests.push(request.url());
+    if (/pdf-omr|pdf\.worker/i.test(request.url())) pdfRequests.push(request.url());
+  });
+  await page.goto('/');
+  expect(scoreRequests).toEqual([]);
+  expect(parserRequests).toEqual([]);
+  expect(pdfRequests).toEqual([]);
+
+  await page.getByRole('tab', { name: 'SCORE' }).click();
+  await expect(page.getByRole('heading', { name: /SCORE INPUT/ })).toBeVisible();
+  expect(scoreRequests.length).toBeGreaterThan(0);
+  expect(parserRequests).toEqual([]);
+  expect(pdfRequests).toEqual([]);
+
+  await page.getByRole('button', { name: 'LOAD SATB DEMO' }).click();
+  await expect(page.locator('#score-import-status')).toHaveText('4 VOICE LINES READY FOR REVIEW');
+  await expect(page.locator('input[name="score-line"]')).toHaveCount(4);
+  await expect(page.locator('.voice-role-badge')).toHaveText(['S', 'A', 'T', 'B']);
+  expect(parserRequests.length).toBeGreaterThan(0);
+  expect(pdfRequests).toEqual([]);
+
+  await expect(page.getByRole('button', { name: 'CONFIRM THIS LINE' })).toBeVisible();
+  await page.getByRole('button', { name: 'CONFIRM THIS LINE' }).click();
+  await expect(page.getByRole('button', { name: '▶ START + MIC' })).toBeEnabled();
+  await expect(page.locator('.score-game-note')).toHaveCount(6);
+  const lane = page.locator('#score-game-lane');
+  const dimensions = await lane.evaluate((element) => ({ clientWidth: element.clientWidth, scrollWidth: element.scrollWidth }));
+  expect(dimensions.scrollWidth).toBeGreaterThanOrEqual(dimensions.clientWidth);
+
+  await page.getByRole('tab', { name: 'TUNING' }).click();
+  await expect(page.locator('#tuning-workspace')).toBeVisible();
+  await expect(page.locator('#score-workspace')).toBeHidden();
+});
+
+test('imports a local MusicXML fixture without loading PDF recognition', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop-chromium');
+  const pdfRequests: string[] = [];
+  page.on('request', (request) => {
+    if (/pdf-omr|pdf\.worker/i.test(request.url())) pdfRequests.push(request.url());
+  });
+  await page.goto('/');
+  await page.getByRole('tab', { name: 'SCORE' }).click();
+  await page.locator('#score-file').setInputFiles('tests/fixtures/scores/satb.musicxml');
+  await expect(page.locator('#score-import-status')).toHaveText('4 VOICE LINES READY FOR REVIEW');
+  await expect(page.getByRole('heading', { name: 'Four Lines' })).toBeVisible();
+  await expect(page.locator('.voice-line-card[data-confidence="high"]')).toHaveCount(4);
+  expect(pdfRequests).toEqual([]);
+});
+
+test('recognizes a clean printed SATB PDF locally and enforces its correction gate', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop-chromium');
+  await page.goto('/');
+  await page.getByRole('tab', { name: 'SCORE' }).click();
+  await page.locator('#score-file').setInputFiles('tests/fixtures/scores/printed-satb.pdf');
+  await expect(page.locator('#score-import-status')).toContainText('VOICE LINES READY FOR REVIEW', { timeout: 20_000 });
+  await expect(page.getByText('PDF_REVIEW_REQUIRED', { exact: true })).toBeVisible();
+  await expect(page.locator('.score-page-preview img')).toBeVisible();
+  await expect(page.locator('input[name="score-line"]')).toHaveCount(4);
+  await expect(page.getByRole('button', { name: 'CONFIRM THIS LINE' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'CONFIRM LINE FIRST' })).toBeDisabled();
+
+  await page.getByRole('button', { name: 'CONFIRM THIS LINE' }).click();
+  await expect(page.locator('#score-import-status')).toHaveText('CHECK THE PDF REVIEW CONFIRMATION FIRST');
+  await page.getByLabel(/I CHECKED THE DETECTED LINE/).check();
+  await page.getByRole('button', { name: 'CONFIRM THIS LINE' }).click();
+  await expect(page.getByRole('button', { name: '▶ START + MIC' })).toBeEnabled();
+  await page.locator('input[name="score-line"]').nth(1).check();
+  await expect(page.getByLabel(/I CHECKED THE DETECTED LINE/)).not.toBeChecked();
+  await expect(page.getByRole('button', { name: 'CONFIRM LINE FIRST' })).toBeDisabled();
+});
+
+test('starts and pauses a score run on the microphone audio clock', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop-chromium');
+  await page.goto('/');
+  await page.getByRole('tab', { name: 'SCORE' }).click();
+  await page.getByRole('button', { name: 'LOAD SATB DEMO' }).click();
+  await page.getByRole('button', { name: 'CONFIRM THIS LINE' }).click();
+  await page.getByRole('button', { name: '▶ START + MIC' }).click();
+  await expect(page.getByRole('button', { name: /STOP MIC/ })).toBeVisible({ timeout: 10_000 });
+  await expect(page.locator('#score-game-state')).toHaveText(/COUNT|PLAYING/);
+  await page.getByRole('button', { name: 'Ⅱ PAUSE' }).click();
+  await expect(page.locator('#score-game-state')).toHaveText('PAUSED');
+  await expect(page.getByRole('button', { name: '▶ RESUME' })).toBeVisible();
 });
 
 test('loads Practice on demand and renders key-aware harmony lanes', async ({ page }) => {
@@ -259,6 +353,13 @@ test('mobile layout does not overflow the viewport', async ({ page }, testInfo) 
   const dimensions = await lane.evaluate((element) => ({ clientWidth: element.clientWidth, scrollWidth: element.scrollWidth }));
   expect(dimensions.scrollWidth).toBeGreaterThan(dimensions.clientWidth);
   expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBeGreaterThan(760);
+
+  await page.getByRole('tab', { name: 'SCORE' }).click();
+  await expect(page.getByRole('heading', { name: /SCORE INPUT/ })).toBeVisible();
+  await page.getByRole('button', { name: 'LOAD SATB DEMO' }).click();
+  await expect(page.locator('#score-import-status')).toHaveText('4 VOICE LINES READY FOR REVIEW');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
+  await expect(page.locator('.voice-line-card')).toHaveCount(4);
 });
 
 test('mobile keyboard scrolls horizontally when swiping across keys', async ({ page, context }, testInfo) => {
