@@ -2,6 +2,8 @@ import { defineConfig, devices } from '@playwright/test';
 import { resolve } from 'node:path';
 
 const fakeAudio = resolve('.cache/fixtures/a4-440hz.wav');
+const testPort = Number(process.env.PITCHLAB_TEST_PORT ?? 4173);
+const testOrigin = `http://127.0.0.1:${testPort}`;
 
 export default defineConfig({
   testDir: './tests/browser',
@@ -9,12 +11,12 @@ export default defineConfig({
   expect: { timeout: 5_000 },
   fullyParallel: false,
   use: {
-    baseURL: 'http://127.0.0.1:4173',
+    baseURL: testOrigin,
     trace: 'retain-on-failure',
   },
   webServer: {
-    command: 'npm run build && vite preview --host 127.0.0.1 --port 4173',
-    url: 'http://127.0.0.1:4173',
+    command: `npm run build && vite preview --host 127.0.0.1 --port ${testPort}`,
+    url: testOrigin,
     reuseExistingServer: true,
     timeout: 120_000,
   },

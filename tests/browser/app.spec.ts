@@ -78,6 +78,32 @@ test('imports a local MusicXML fixture without loading PDF recognition', async (
   expect(pdfRequests).toEqual([]);
 });
 
+test('shows one primary SATB choice per role while keeping divisi candidates available', async ({ page }) => {
+  const parts = [
+    ['P1', 'Soprano', 'C', '5', 'A', '4'],
+    ['P2', 'Alto', 'G', '4', 'E', '4'],
+    ['P3', 'Tenor', 'C', '4', 'A', '3'],
+    ['P4', 'Bass', 'E', '3', 'C', '3'],
+  ];
+  const xml = `<?xml version="1.0" encoding="UTF-8"?><score-partwise version="4.0">
+    <work><work-title>Divisi SATB</work-title></work><part-list>${parts.map(([id, name]) => `<score-part id="${id}"><part-name>${name}</part-name></score-part>`).join('')}</part-list>
+    ${parts.map(([id, , upperStep, upperOctave, lowerStep, lowerOctave]) => `<part id="${id}"><measure number="1"><attributes><divisions>1</divisions><time><beats>4</beats><beat-type>4</beat-type></time></attributes><note><pitch><step>${upperStep}</step><octave>${upperOctave}</octave></pitch><duration>4</duration><voice>1</voice></note><note><chord/><pitch><step>${lowerStep}</step><octave>${lowerOctave}</octave></pitch><duration>4</duration><voice>1</voice></note></measure></part>`).join('')}
+  </score-partwise>`;
+  await page.goto('/');
+  await page.getByRole('tab', { name: 'SCORE' }).click();
+  await page.locator('#score-file').setInputFiles({ name: 'divisi.musicxml', mimeType: 'application/vnd.recordare.musicxml+xml', buffer: Buffer.from(xml) });
+
+  await expect(page.locator('#score-import-status')).toHaveText('4 PRIMARY SATB LINES READY · 4 EXTRA CANDIDATES HIDDEN');
+  await expect(page.locator('input[name="score-line"]')).toHaveCount(4);
+  await expect(page.locator('.voice-role-badge')).toHaveText(['S', 'A', 'T', 'B']);
+  await page.getByRole('button', { name: 'SHOW ALL SOURCE CANDIDATES 8' }).click();
+  await expect(page.locator('input[name="score-line"]')).toHaveCount(8);
+  await page.getByRole('button', { name: 'SHOW PRIMARY SATB 4' }).click();
+  await expect(page.locator('input[name="score-line"]')).toHaveCount(4);
+  const viewportOverflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+  expect(viewportOverflow).toBeLessThanOrEqual(1);
+});
+
 test('recognizes a clean printed SATB PDF locally and enforces its correction gate', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'desktop-chromium');
   await page.goto('/');
@@ -95,6 +121,11 @@ test('recognizes a clean printed SATB PDF locally and enforces its correction ga
   await page.getByLabel(/I CHECKED THE DETECTED LINE/).check();
   await page.getByRole('button', { name: 'CONFIRM THIS LINE' }).click();
   await expect(page.getByRole('button', { name: '▶ START + MIC' })).toBeEnabled();
+  await page.getByRole('button', { name: '▶ START + MIC' }).click();
+  await expect(page.getByRole('button', { name: 'Ⅱ PAUSE' })).toBeEnabled({ timeout: 10_000 });
+  await page.getByRole('button', { name: 'RECOGNIZE AGAIN' }).click();
+  await expect(page.getByRole('button', { name: 'Ⅱ PAUSE' })).toBeDisabled();
+  await expect(page.locator('#score-import-status')).toContainText('VOICE LINES READY FOR REVIEW', { timeout: 20_000 });
   await page.locator('input[name="score-line"]').nth(1).check();
   await expect(page.getByLabel(/I CHECKED THE DETECTED LINE/)).not.toBeChecked();
   await expect(page.getByRole('button', { name: 'CONFIRM LINE FIRST' })).toBeDisabled();
@@ -102,16 +133,62 @@ test('recognizes a clean printed SATB PDF locally and enforces its correction ga
 
 test('starts and pauses a score run on the microphone audio clock', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'desktop-chromium');
+  await page.addInitScript(() => {
+    const scope = window as typeof window & { __scoreOscillatorCount?: number };
+    scope.__scoreOscillatorCount = 0;
+    const original = BaseAudioContext.prototype.createOscillator;
+    BaseAudioContext.prototype.createOscillator = function createOscillator() {
+      scope.__scoreOscillatorCount = (scope.__scoreOscillatorCount ?? 0) + 1;
+      return original.call(this);
+    };
+  });
   await page.goto('/');
   await page.getByRole('tab', { name: 'SCORE' }).click();
   await page.getByRole('button', { name: 'LOAD SATB DEMO' }).click();
   await page.getByRole('button', { name: 'CONFIRM THIS LINE' }).click();
+  await page.getByLabel('Score tempo').selectOption('1.2');
+  await page.getByLabel('Count in beats').selectOption('1');
   await page.getByRole('button', { name: '▶ START + MIC' }).click();
   await expect(page.getByRole('button', { name: /STOP MIC/ })).toBeVisible({ timeout: 10_000 });
   await expect(page.locator('#score-game-state')).toHaveText(/COUNT|PLAYING/);
+  await expect(page.locator('#score-audio-state')).toHaveText(/S GUIDE · \d+ BACKING/);
+  await expect.poll(() => page.evaluate(() => (window as typeof window & { __scoreOscillatorCount?: number }).__scoreOscillatorCount ?? 0), { timeout: 5_000 }).toBeGreaterThan(0);
   await page.getByRole('button', { name: 'Ⅱ PAUSE' }).click();
   await expect(page.locator('#score-game-state')).toHaveText('PAUSED');
   await expect(page.getByRole('button', { name: '▶ RESUME' })).toBeVisible();
+  const beforeResume = await page.evaluate(() => (window as typeof window & { __scoreOscillatorCount?: number }).__scoreOscillatorCount ?? 0);
+  await page.getByRole('button', { name: '▶ RESUME' }).click();
+  await expect(page.locator('#score-game-state')).toHaveText(/COUNT|PLAYING/);
+  await expect.poll(() => page.evaluate(() => (window as typeof window & { __scoreOscillatorCount?: number }).__scoreOscillatorCount ?? 0)).toBeGreaterThan(beforeResume);
+  const beforeRestart = await page.evaluate(() => (window as typeof window & { __scoreOscillatorCount?: number }).__scoreOscillatorCount ?? 0);
+  await page.getByRole('button', { name: '↺ RESTART' }).click();
+  await expect(page.locator('#score-game-state')).toHaveText(/COUNT|PLAYING/);
+  await expect.poll(() => page.evaluate(() => (window as typeof window & { __scoreOscillatorCount?: number }).__scoreOscillatorCount ?? 0)).toBeGreaterThan(beforeRestart);
+});
+
+test('applies the score loop toggle while a run is already active', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop-chromium');
+  await page.addInitScript(() => {
+    const scope = window as typeof window & { __scoreOscillatorCount?: number };
+    scope.__scoreOscillatorCount = 0;
+    const original = BaseAudioContext.prototype.createOscillator;
+    BaseAudioContext.prototype.createOscillator = function createOscillator() {
+      scope.__scoreOscillatorCount = (scope.__scoreOscillatorCount ?? 0) + 1;
+      return original.call(this);
+    };
+  });
+  const parts = [['S', 'Soprano', 'C', 5], ['A', 'Alto', 'G', 4], ['T', 'Tenor', 'E', 4], ['B', 'Bass', 'C', 3]] as const;
+  const xml = `<?xml version="1.0"?><score-partwise version="4.0"><part-list>${parts.map(([id, name]) => `<score-part id="${id}"><part-name>${name}</part-name></score-part>`).join('')}</part-list>${parts.map(([id, , step, octave], index) => `<part id="${id}"><measure number="1"><attributes><divisions>1</divisions><time><beats>1</beats><beat-type>4</beat-type></time></attributes>${index === 0 ? '<direction><sound tempo="600"/></direction>' : ''}<note><pitch><step>${step}</step><octave>${octave}</octave></pitch><duration>1</duration><voice>1</voice></note></measure></part>`).join('')}</score-partwise>`;
+  await page.goto('/');
+  await page.getByRole('tab', { name: 'SCORE' }).click();
+  await page.locator('#score-file').setInputFiles({ name: 'short-loop.musicxml', mimeType: 'application/vnd.recordare.musicxml+xml', buffer: Buffer.from(xml) });
+  await page.getByRole('button', { name: 'CONFIRM THIS LINE' }).click();
+  await page.getByLabel('Count in beats').selectOption('1');
+  await page.getByRole('button', { name: '▶ START + MIC' }).click();
+  await expect.poll(() => page.evaluate(() => (window as typeof window & { __scoreOscillatorCount?: number }).__scoreOscillatorCount ?? 0), { timeout: 5_000 }).toBeGreaterThan(0);
+  await page.getByLabel('LOOP FULL LINE').check();
+  const beforeLoop = await page.evaluate(() => (window as typeof window & { __scoreOscillatorCount?: number }).__scoreOscillatorCount ?? 0);
+  await expect.poll(() => page.evaluate(() => (window as typeof window & { __scoreOscillatorCount?: number }).__scoreOscillatorCount ?? 0), { timeout: 3_000 }).toBeGreaterThan(beforeLoop);
 });
 
 test('loads Practice on demand and renders key-aware harmony lanes', async ({ page }) => {

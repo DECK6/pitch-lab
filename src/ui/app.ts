@@ -251,6 +251,7 @@ export class App {
             if (this.currentState !== 'running') throw new Error('Microphone is not running.');
           },
           nowSeconds: () => this.session.currentTimeSeconds,
+          context: () => this.session.currentAudioContext,
         });
         this.score = score;
         return score;

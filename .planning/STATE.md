@@ -10,10 +10,10 @@ See `.planning/PROJECT.md` and `docs/product-spec.md`.
 ## Status
 
 - Phase: Product P2 / internal Phase 3 preview implemented
-- State: Local MusicXML/MXL, experimental printed-PDF review, choir-line selection, and audio-clock rhythm lane deployed to the V2-only route; full P2 and physical-device release gates remain pending
+- State: Local MusicXML/MXL, experimental printed-PDF review, primary SATB selection, selected-line guide + score backing synth, and audio-clock rhythm lane implemented for the V2-only route; full P2 and physical-device release gates remain pending
 - Plan: `.planning/phases/02-p1-practice-harmony/02-01-PLAN.md`
 - Next plan: `.planning/phases/03-p2-score-game/03-01-PLAN.md`
-- Last activity: 2026-07-22 — P2 preview deployed to `https://dexa.art/pitch-lab-v2/`; `https://dexa.art/pitchlab/` retained its prior two-mode build
+- Last activity: 2026-07-22 — P2 preview gained primary SATB filtering plus local guide/backing synth; V2 redeployment pending, with `https://dexa.art/pitchlab/` retained unchanged
 
 ## Known Release Gates
 
@@ -28,5 +28,5 @@ See `.planning/PROJECT.md` and `docs/product-spec.md`.
 - P1 initial graph: target 75 KB raw / 25 KB Brotli; hard cap 110 KB raw / 40 KB Brotli.
 - P1 practice graph: hard cap 140 KB raw / 50 KB Brotli.
 - P1 measured graphs: initial 67 KB raw / 20 KB Brotli; Practice 27 KB raw / 7 KB Brotli; Neural 13,969 KB raw / 2,587 KB Brotli.
-- P2 measured graphs: SCORE 116 KB raw / 33 KB Brotli; local PDF OMR 1,596 KB raw / 404 KB Brotli; both remain outside initial TUNING/PRACTICE loads.
+- P2 measured graphs: SCORE 125 KB raw / 36 KB Brotli; local PDF OMR 1,596 KB raw / 404 KB Brotli; both remain outside initial TUNING/PRACTICE loads.
 - PDF OMR: experimental on the V2-only route, local to the browser, and blocked by a correction-confirmation gate; production-grade accuracy and physical-device validation remain pending.

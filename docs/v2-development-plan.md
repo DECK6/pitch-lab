@@ -158,7 +158,7 @@ P1 does not add a production dependency. The theory surface is small enough to i
 
 ## P2 — Score-guided rhythm game + choir parts
 
-> **V2 preview status (2026-07-22):** The implemented first slice keeps all score bytes local. MusicXML/MXL provides structured parts and timing; printed PDF uses a lazy PDF.js raster pass with lightweight five-line staff/notehead detection. The UI requires line selection, note review/correction, and an explicit PDF confirmation before grading. The preview intentionally does not yet expand repeats/endings or D.S./D.C./Coda, engrave full notation, recognize handwritten scores, or claim production-grade PDF OMR accuracy. Those constructs surface as review warnings instead of silent playback guesses.
+> **V2 preview status (2026-07-22):** The implemented first slice keeps all score bytes local. MusicXML/MXL provides structured parts and timing; printed PDF uses a lazy PDF.js raster pass with lightweight five-line staff/notehead detection. The default selector presents one primary S/A/T/B line per role and keeps additional divisi/source candidates behind an advanced reveal. During the run, a lightweight Web Audio synth plays the selected line prominently and the remaining written parts softly on the game clock. The UI still requires line selection, note review/correction, and an explicit PDF confirmation before grading. The preview intentionally does not yet expand repeats/endings or D.S./D.C./Coda, engrave full notation, recognize handwritten scores, or claim production-grade PDF OMR accuracy. Those constructs surface as review warnings instead of silent playback guesses.
 
 ### Key decision: structured score first, PDF through OMR second
 
@@ -190,7 +190,7 @@ The rhythm game never grades directly from raw OMR output. The singer sees the d
    - forward/back repeats and first/second endings.
 3. Show an import report. Unsupported jumps such as ambiguous D.S./D.C./Coda are called out instead of silently linearized.
 4. Select a part or extracted voice.
-5. Start with count-in, tempo 50–120%, measure loop, metronome, and optional reference melody.
+5. Start with count-in, tempo 50–120%, full-line loop, a prominent selected-line guide, and softer playback of the remaining written parts.
 6. The score cursor and game lane follow the `AudioContext.currentTime` clock. `requestAnimationFrame` only draws the current position.
 7. The active key card follows key-signature changes in the score.
 8. Score each note from a latency-compensated window using median cents, voiced coverage, onset error, and sustain coverage. Rests are checked only for voiced leakage, not exact silence level.
@@ -206,6 +206,8 @@ Part extraction has three confidence levels:
 | Condensed/crossing voices or ambiguous OMR output | Show candidates and require manual mapping | Low |
 
 Automatic SATB labels use part names first, then staff/voice structure, then observed range as a hint. Range alone never finalizes a part because voice ranges overlap. The user can always rename, merge, split, or disable a candidate line before play.
+
+The primary selector never equates every extraction candidate with a singer-facing role. It picks at most one default line for each S/A/T/B role, prefers explicit part names and primary MusicXML voices, and hides any extra divisi/rank candidates behind `SHOW ALL SOURCE CANDIDATES` so no source data is discarded.
 
 The part selector previews:
 
@@ -389,7 +391,7 @@ Pure music-theory and score-normalization modules target 100% branch coverage. B
 - Automatic vocal-range classification as identity. Range is only an SATB suggestion hint.
 - Handwritten-score OMR.
 - Full notation editing. The correction gate edits target events and mappings, not engraving.
-- Automatic accompaniment generation, MIDI input/output, sampled grand-piano libraries, cloud accounts, or social leaderboards.
+- Harmonic accompaniment generation beyond the notes already written in the score, MIDI file/device input/output, sampled grand-piano libraries, cloud accounts, or social leaderboards. The preview's oscillator synth only renders imported score events.
 - Silent production replacement of V1. The production cutover was explicitly approved on 2026-07-20; the V1 source baseline remains available for rollback.
 
 ## Release sequence

@@ -17,6 +17,8 @@ Import a structured or OMR-converted score, normalize it into a renderer-indepen
 - D-310: The PDF OMR path receives score bytes only inside the current browser session, never microphone PCM, and creates no server-side temporary files.
 - D-311: Handwritten OMR and polyphonic microphone recognition are outside P2.
 - D-312: SCORE is loaded only when its tab opens; MusicXML and PDF/OMR graphs load only after the corresponding explicit file action.
+- D-313: The singer-facing selector defaults to at most one primary line per S/A/T/B role while preserving extra extraction candidates behind an advanced reveal.
+- D-314: Score playback uses a dependency-free local Web Audio synth: the selected line is the prominent guide and remaining written events are softer backing on the same audio clock. Dense backing is normalized by simultaneous polyphony and the mix passes through a shared limiter. This is score rendering, not source separation or generated harmony.
 </decisions>
 
 <canonical_refs>

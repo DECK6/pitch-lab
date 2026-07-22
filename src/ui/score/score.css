@@ -45,6 +45,7 @@
 .voice-line-copy strong { font-size: 0.72rem; overflow-wrap: anywhere; }
 .voice-line-copy small { color: var(--muted); font-size: 0.55rem; }
 .voice-line-copy em { color: #6c4b42; font-size: 0.48rem; font-style: normal; line-height: 1.35; overflow-wrap: anywhere; }
+.score-line-view-toggle { min-height: 44px; margin: 0 14px 12px; padding: 8px 12px; border: 1.5px solid var(--line); border-radius: 4px; background: #d8d4c8; box-shadow: 0 2px 0 var(--line); font: inherit; font-size: 0.57rem; font-weight: 900; cursor: pointer; }
 .voice-confirm-row { display: grid; grid-template-columns: minmax(120px, 0.4fr) minmax(210px, 0.8fr) minmax(220px, 1fr); gap: 8px; padding: 0 14px 14px; }
 .voice-confirm-row > label, .score-transpose-control { min-height: 58px; display: grid; align-items: center; gap: 6px; padding: 7px; border: 1px solid #99968b; background: #d8d4c8; }
 .voice-confirm-row > label { grid-template-columns: auto 1fr; }
@@ -67,14 +68,17 @@
 .score-review-ack input { width: 22px; height: 22px; accent-color: var(--ink); }
 .score-structured-note { margin: 0 14px 14px; padding: 10px; border: 1px solid #88867d; background: var(--mint); font-size: 0.58rem; }
 
-.score-game-controls { display: grid; grid-template-columns: repeat(3, minmax(120px, 0.55fr)) repeat(3, minmax(130px, 1fr)); gap: 7px; padding: 14px; }
+.score-game-controls { display: grid; grid-template-columns: repeat(4, minmax(130px, 1fr)); gap: 7px; padding: 14px; }
 .score-game-controls label { min-height: 52px; display: flex; flex-direction: column; justify-content: center; gap: 5px; padding: 7px; border: 1px solid #99968b; background: #d8d4c8; }
 .score-game-controls select { border: 0; border-bottom: 2px solid var(--line); background: transparent; font: inherit; font-weight: 900; }
 .score-game-controls label.score-loop-toggle { flex-direction: row; align-items: center; cursor: pointer; }
 .score-loop-toggle input { width: 20px; height: 20px; accent-color: var(--orange); }
+.score-level-control span { display: flex; justify-content: space-between; gap: 8px; }
+.score-level-control output { color: var(--ink); }
+.score-level-control input { width: 100%; accent-color: var(--orange); }
 .score-game-controls button { min-height: 52px; border: 1.5px solid var(--line); border-radius: 4px; background: var(--orange); box-shadow: 0 3px 0 var(--line); font: inherit; font-size: 0.64rem; font-weight: 900; cursor: pointer; }
 .score-game-controls button:disabled { background: #c6c3b9; color: #77766f; box-shadow: none; cursor: not-allowed; }
-.score-game-readout { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; padding: 0 14px 12px; }
+.score-game-readout { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; padding: 0 14px 12px; }
 .score-game-readout div { min-height: 65px; display: flex; flex-direction: column; justify-content: space-between; padding: 8px; border: 1px solid var(--line); background: var(--screen); }
 .score-game-readout strong { font-size: clamp(0.8rem, 2vw, 1.18rem); overflow-wrap: anywhere; }
 .score-game-lane { overflow-x: auto; padding: 12px 14px 16px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); background: #bbb8ad; scrollbar-color: #595b53 #cbc8bd; }

@@ -77,6 +77,46 @@ export function extractVoiceLines(score: ScoreDocument): VoiceLine[] {
     .map((candidate) => candidate.line);
 }
 
+export function selectPrimaryVoiceLines(lines: VoiceLine[], maximum = 4): VoiceLine[] {
+  const limit = Math.max(1, Math.min(4, Math.round(maximum)));
+  const selected: VoiceLine[] = [];
+  const selectedIds = new Set<string>();
+  const selectedParts = new Set<string>();
+  const select = (line: VoiceLine | undefined) => {
+    if (!line || selectedIds.has(line.id) || selected.length >= limit) return;
+    selected.push(line);
+    selectedIds.add(line.id);
+    selectedParts.add(line.sourcePartId);
+  };
+
+  ROLE_ORDER.forEach((role) => {
+    const candidates = lines.filter((line) => line.suggestedRole === role);
+    select([...candidates].sort(comparePrimaryCandidate)[0]);
+  });
+
+  const unresolvedLines = lines.filter((line) => line.suggestedRole === 'LINE');
+  const bestByUnselectedPart = new Map<string, VoiceLine>();
+  unresolvedLines.forEach((line) => {
+    if (selectedIds.has(line.id) || selectedParts.has(line.sourcePartId)) return;
+    const current = bestByUnselectedPart.get(line.sourcePartId);
+    if (!current || comparePrimaryCandidate(line, current) < 0) bestByUnselectedPart.set(line.sourcePartId, line);
+  });
+  [...bestByUnselectedPart.values()].sort(comparePrimaryCandidate).forEach(select);
+  [...unresolvedLines].sort(comparePrimaryCandidate).forEach(select);
+
+  const claimedRoles = new Set(selected.map((line) => line.suggestedRole).filter((role): role is ChoirRole => role !== 'LINE'));
+  const missingRoles = ROLE_ORDER.filter((role) => !claimedRoles.has(role));
+  selected
+    .filter((line) => line.suggestedRole === 'LINE')
+    .sort((a, b) => averageMidi(b.events) - averageMidi(a.events))
+    .forEach((line, index) => {
+      line.suggestedRole = missingRoles[index] ?? 'LINE';
+      if (line.suggestedRole !== 'LINE') line.reasons = [...line.reasons, 'primary-satb-layout'];
+    });
+
+  return selected.sort(compareByChoirRole);
+}
+
 function splitVoiceByPitchRank(voice: ScoreVoice): TargetNoteEvent[][] {
   const onsetGroups = new Map<string, TargetNoteEvent[]>();
   voice.events.forEach((event) => {
@@ -109,4 +149,23 @@ function averageMidi(events: TargetNoteEvent[]): number {
 function compareVoice(a: string, b: string): number {
   const numeric = Number(a) - Number(b);
   return Number.isFinite(numeric) && numeric !== 0 ? numeric : a.localeCompare(b);
+}
+
+function comparePrimaryCandidate(a: VoiceLine, b: VoiceLine): number {
+  const confidenceRank: Record<ImportConfidence, number> = { high: 0, medium: 1, low: 2 };
+  const confidence = confidenceRank[a.confidence] - confidenceRank[b.confidence];
+  if (confidence !== 0) return confidence;
+  const voice = compareVoice(a.sourceVoice, b.sourceVoice);
+  if (voice !== 0) return voice;
+  const rankA = /:rank(\d+)$/.exec(a.id)?.[1];
+  const rankB = /:rank(\d+)$/.exec(b.id)?.[1];
+  const rank = Number(rankA ?? 1) - Number(rankB ?? 1);
+  if (rank !== 0) return rank;
+  return b.events.length - a.events.length || a.id.localeCompare(b.id);
+}
+
+function compareByChoirRole(a: VoiceLine, b: VoiceLine): number {
+  const role = ROLE_ORDER.indexOf(a.suggestedRole as ChoirRole) - ROLE_ORDER.indexOf(b.suggestedRole as ChoirRole);
+  if (role !== 0) return role;
+  return averageMidi(b.events) - averageMidi(a.events);
 }

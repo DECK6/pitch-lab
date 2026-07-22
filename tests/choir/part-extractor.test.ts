@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { describe, expect, it } from 'vitest';
-import { extractVoiceLines } from '../../src/choir/part-extractor';
+import { extractVoiceLines, selectPrimaryVoiceLines } from '../../src/choir/part-extractor';
 import type { ScoreDocument } from '../../src/score/contracts';
 import { parseMusicXml } from '../../src/score/musicxml-import';
 
@@ -37,5 +37,45 @@ describe('choir part extraction', () => {
     expect(lines.map((line) => line.events.map((event) => event.soundingMidi))).toEqual([[72, 74], [67, 69]]);
     expect(lines.every((line) => line.reasons.includes('polyphonic-rank-split'))).toBe(true);
     expect(lines.every((line) => line.confidence === 'low')).toBe(true);
+  });
+
+  it('keeps extraction candidates but presents one primary line per SATB role', () => {
+    const roleParts = [
+      ['Soprano', 72, 69],
+      ['Alto', 67, 64],
+      ['Tenor', 60, 57],
+      ['Bass', 52, 48],
+    ] as const;
+    const score: ScoreDocument = {
+      sourceKind: 'musicxml', fileName: 'divisi.musicxml', title: 'Divisi', measureCount: 1, durationBeats: 4,
+      tempoMap: [{ beat: 0, bpm: 120, measure: 1 }], keyMap: [{ beat: 0, fifths: 0, mode: 'major', measure: 1 }],
+      timeMap: [{ beat: 0, beats: 4, beatType: 4, measure: 1 }], warnings: [], requiresReview: false,
+      parts: roleParts.map(([name, upper, lower], partIndex) => ({
+        id: `P${partIndex + 1}`,
+        name,
+        voices: [{
+          id: `P${partIndex + 1}:s1:v1`,
+          partId: `P${partIndex + 1}`,
+          staff: 1,
+          voice: '1',
+          events: [
+            { id: `p${partIndex}-upper`, measure: 1, onsetBeat: 0, durationBeats: 1, writtenMidi: upper, soundingMidi: upper, confidence: 'high' },
+            { id: `p${partIndex}-lower`, measure: 1, onsetBeat: 0, durationBeats: 1, writtenMidi: lower, soundingMidi: lower, confidence: 'high' },
+          ],
+        }],
+      })),
+    };
+
+    const candidates = extractVoiceLines(score);
+    const primary = selectPrimaryVoiceLines(candidates);
+
+    expect(candidates).toHaveLength(8);
+    expect(primary).toHaveLength(4);
+    expect(primary.map((line) => line.suggestedRole)).toEqual(['S', 'A', 'T', 'B']);
+    expect(new Set(primary.map((line) => line.sourcePartId)).size).toBe(4);
+
+    const onlySopranoAndAlto = candidates.filter((line) => line.suggestedRole === 'S' || line.suggestedRole === 'A');
+    expect(onlySopranoAndAlto).toHaveLength(4);
+    expect(selectPrimaryVoiceLines(onlySopranoAndAlto).map((line) => line.suggestedRole)).toEqual(['S', 'A']);
   });
 });

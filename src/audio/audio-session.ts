@@ -52,6 +52,10 @@ export class AudioSession {
     return this.context?.currentTime ?? null;
   }
 
+  get currentAudioContext(): AudioContext | null {
+    return this.context;
+  }
+
   async start(): Promise<void> {
     if (!['idle', 'permission_denied', 'error', 'needs_restart'].includes(this.state)) return;
     if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia || !window.AudioContext) {

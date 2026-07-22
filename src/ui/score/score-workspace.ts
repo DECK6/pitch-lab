@@ -1,6 +1,7 @@
 import type { AudioSessionState, PitchFrame } from '../../audio/types';
-import { extractVoiceLines } from '../../choir/part-extractor';
-import { ScoreGameEngine, type GameSnapshot } from '../../game/score-game';
+import { extractVoiceLines, selectPrimaryVoiceLines } from '../../choir/part-extractor';
+import { buildScorePlaybackPlan, ScoreAccompaniment } from '../../game/score-accompaniment';
+import { scoreSecondsAtBeat, ScoreGameEngine, type GameSnapshot } from '../../game/score-game';
 import { cloneEvents, noteNameForScoreMidi, type ChoirRole, type ScoreDocument, type TargetNoteEvent, type VoiceLine } from '../../score/contracts';
 import { DEMO_SCORE_XML } from '../../score/demo-score';
 import './score.css';
@@ -8,6 +9,7 @@ import './score.css';
 interface ScoreAudioBridge {
   ensureMicrophone: () => Promise<void>;
   nowSeconds: () => number | null;
+  context: () => AudioContext | null;
 }
 
 const ROLE_OPTIONS: ChoirRole[] = ['S', 'A', 'T', 'B', 'LINE'];
@@ -15,6 +17,8 @@ const ROLE_OPTIONS: ChoirRole[] = ['S', 'A', 'T', 'B', 'LINE'];
 export class ScoreWorkspace {
   private score: ScoreDocument | null = null;
   private lines: VoiceLine[] = [];
+  private primaryLineIds: string[] = [];
+  private showAllLines = false;
   private selectedLineId = '';
   private confirmed = false;
   private reviewAccepted = false;
@@ -22,12 +26,17 @@ export class ScoreWorkspace {
   private statusKind: 'idle' | 'busy' | 'ready' | 'error' = 'idle';
   private active = false;
   private game: ScoreGameEngine | null = null;
+  private accompaniment: ScoreAccompaniment | null = null;
   private animationFrame = 0;
   private ignoredEvents = new Set<string>();
   private pdfFile: File | null = null;
   private pdfStavesPerSystem: 1 | 2 | 4 = 4;
   private loopEnabled = false;
   private lineOctaveShifts = new Map<string, number>();
+  private playbackTempoScale = 1;
+  private playbackCountInBeats = 2;
+  private guideLevel = 0.85;
+  private backingLevel = 0.35;
 
   constructor(private readonly root: HTMLElement, private readonly audio: ScoreAudioBridge) {
     this.render();
@@ -79,6 +88,7 @@ export class ScoreWorkspace {
 
   private loadedScoreMarkup(score: ScoreDocument, selected: VoiceLine | null): string {
     const events = selected ? selected.events.filter((event) => !this.ignoredEvents.has(event.id)) : [];
+    const visibleLines = this.visibleLines();
     const initialKey = score.keyMap[0] ? scoreKeyName(score.keyMap[0].fifths, score.keyMap[0].mode) : 'C MAJOR';
     return `
       <section class="panel score-review-panel" aria-labelledby="score-review-title">
@@ -90,7 +100,7 @@ export class ScoreWorkspace {
             <h3>${escapeHtml(score.title)}</h3>
             <div class="score-metrics">
               <span><small>MEASURES</small><strong>${score.measureCount}</strong></span>
-              <span><small>LINES</small><strong>${this.lines.length}</strong></span>
+              <span><small>SATB</small><strong>${this.primaryLineIds.length}</strong></span>
               <span><small>KEY</small><strong>${initialKey}</strong></span>
               <span><small>TEMPO</small><strong>${Math.round(score.tempoMap[0]?.bpm ?? 120)}</strong></span>
               <span><small>EVENTS</small><strong>${this.lines.reduce((sum, line) => sum + line.events.length, 0)}</strong></span>
@@ -102,10 +112,11 @@ export class ScoreWorkspace {
       </section>
 
       <section class="panel voice-map-panel" aria-labelledby="voice-map-title">
-        <div class="panel-head"><h2 id="voice-map-title">09 / PART & VOICE SPLIT</h2><span>ONE SINGER · ONE LINE</span></div>
+        <div class="panel-head"><h2 id="voice-map-title">09 / SELECT S · A · T · B</h2><span>ONE SINGER · ONE LINE</span></div>
         <div class="voice-line-list" role="radiogroup" aria-label="Choir voice">
-          ${this.lines.map((line) => this.voiceLineMarkup(line)).join('')}
+          ${visibleLines.map((line) => this.voiceLineMarkup(line)).join('')}
         </div>
+        ${this.lines.length > this.primaryLineIds.length ? `<button id="score-line-view-toggle" class="score-line-view-toggle" type="button">${this.showAllLines ? `SHOW PRIMARY SATB ${this.primaryLineIds.length}` : `SHOW ALL SOURCE CANDIDATES ${this.lines.length}`}</button>` : ''}
         ${selected ? `<div class="voice-confirm-row">
           <label><span>ROLE</span><select id="score-role" aria-label="Selected choir role">${ROLE_OPTIONS.map((role) => `<option value="${role}"${role === selected.suggestedRole ? ' selected' : ''}>${role}</option>`).join('')}</select></label>
           <div class="score-transpose-control"><span>OCTAVE</span><button type="button" data-line-transpose="-12" aria-label="Selected score line octave down">−</button><strong id="score-line-octave">${formatSigned(this.lineOctaveShifts.get(selected.id) ?? 0)}</strong><button type="button" data-line-transpose="12" aria-label="Selected score line octave up">+</button></div>
@@ -153,6 +164,8 @@ export class ScoreWorkspace {
         <label><span>TEMPO</span><select id="score-tempo-scale" aria-label="Score tempo"><option value="0.5">50%</option><option value="0.75">75%</option><option value="1" selected>100%</option><option value="1.2">120%</option></select></label>
         <label><span>COUNT IN</span><select id="score-count-in" aria-label="Count in beats"><option value="1">1 BEAT</option><option value="2" selected>2 BEATS</option><option value="4">4 BEATS</option></select></label>
         <label class="score-loop-toggle"><input id="score-loop" type="checkbox"><span>LOOP FULL LINE</span></label>
+        <label class="score-level-control"><span>SELECTED GUIDE <output id="score-guide-level-value">${Math.round(this.guideLevel * 100)}</output></span><input id="score-guide-level" type="range" min="0" max="100" value="${Math.round(this.guideLevel * 100)}" aria-label="Selected guide level"></label>
+        <label class="score-level-control"><span>OTHER PARTS <output id="score-backing-level-value">${Math.round(this.backingLevel * 100)}</output></span><input id="score-backing-level" type="range" min="0" max="100" value="${Math.round(this.backingLevel * 100)}" aria-label="Other parts level"></label>
         <button id="score-game-start" type="button"${armed ? '' : ' disabled'}>${armed ? '▶ START + MIC' : 'CONFIRM LINE FIRST'}</button>
         <button id="score-game-pause" type="button" disabled>Ⅱ PAUSE</button>
         <button id="score-game-restart" type="button" disabled>↺ RESTART</button>
@@ -165,6 +178,7 @@ export class ScoreWorkspace {
         <div><small>SCORE</small><strong id="score-game-score">000</strong></div>
         <div><small>PERFECT</small><strong id="score-perfect">0</strong></div>
         <div><small>GOOD / MISS</small><strong id="score-good-miss">0 / 0</strong></div>
+        <div><small>AUDIO</small><strong id="score-audio-state">GUIDE + BACKING</strong></div>
       </div>
       <div id="score-game-lane" class="score-game-lane" aria-label="Score rhythm game lane">
         <div class="score-lane-surface" style="--score-beats:${laneDuration}">
@@ -172,7 +186,7 @@ export class ScoreWorkspace {
           <span id="score-game-cursor" class="score-game-cursor" style="left:0%"></span>
         </div>
       </div>
-      <p class="score-game-hint">THE AUDIO CLOCK DRIVES TIME. SING THE SELECTED MONOPHONIC LINE; THE SCREEN ONLY DRAWS ITS POSITION.</p>
+      <p class="score-game-hint">LOCAL MIDI-STYLE SYNTH: THE SELECTED PART PLAYS LOUD AS YOUR GUIDE; OTHER SCORE PARTS PLAY SOFT AS ACCOMPANIMENT. USE HEADPHONES TO KEEP PLAYBACK OUT OF THE MICROPHONE.</p>
     </section>`;
   }
 
@@ -207,6 +221,14 @@ export class ScoreWorkspace {
   }
 
   private bindLoadedControls(): void {
+    this.root.querySelector('#score-line-view-toggle')?.addEventListener('click', () => {
+      this.showAllLines = !this.showAllLines;
+      if (!this.showAllLines && !this.primaryLineIds.includes(this.selectedLineId)) {
+        this.selectedLineId = this.primaryLineIds[0] ?? '';
+        this.invalidateConfirmation();
+      }
+      this.render();
+    });
     this.root.querySelectorAll<HTMLInputElement>('input[name="score-line"]').forEach((input) => {
       input.addEventListener('change', () => {
         this.stopGame();
@@ -258,6 +280,19 @@ export class ScoreWorkspace {
     this.root.querySelector('#score-game-start')?.addEventListener('click', () => void this.startGame());
     this.root.querySelector('#score-game-pause')?.addEventListener('click', () => this.togglePause());
     this.root.querySelector('#score-game-restart')?.addEventListener('click', () => this.restartGame());
+    this.root.querySelector<HTMLInputElement>('#score-guide-level')?.addEventListener('input', (event) => {
+      this.guideLevel = Number((event.currentTarget as HTMLInputElement).value) / 100;
+      this.setText('score-guide-level-value', String(Math.round(this.guideLevel * 100)));
+      this.accompaniment?.setLevels({ guide: this.guideLevel, backing: this.backingLevel });
+    });
+    this.root.querySelector<HTMLInputElement>('#score-backing-level')?.addEventListener('input', (event) => {
+      this.backingLevel = Number((event.currentTarget as HTMLInputElement).value) / 100;
+      this.setText('score-backing-level-value', String(Math.round(this.backingLevel * 100)));
+      this.accompaniment?.setLevels({ guide: this.guideLevel, backing: this.backingLevel });
+    });
+    this.root.querySelector<HTMLInputElement>('#score-loop')?.addEventListener('change', (event) => {
+      this.loopEnabled = (event.currentTarget as HTMLInputElement).checked;
+    });
     this.root.querySelector('#pdf-regroup')?.addEventListener('click', () => {
       const count = Number(this.root.querySelector<HTMLSelectElement>('#pdf-staves-per-system')?.value);
       if (!this.pdfFile || (count !== 1 && count !== 2 && count !== 4)) return;
@@ -286,6 +321,7 @@ export class ScoreWorkspace {
   }
 
   private async importPdf(file: File, stavesPerSystem: 1 | 2 | 4): Promise<void> {
+    this.stopGame();
     this.statusKind = 'busy';
     this.statusMessage = 'LOADING LOCAL PDF RECOGNITION…';
     this.render();
@@ -305,21 +341,31 @@ export class ScoreWorkspace {
   }
 
   private acceptScore(score: ScoreDocument): void {
+    this.stopGame();
     this.score = score;
     this.lines = extractVoiceLines(score);
-    this.selectedLineId = this.lines[0]?.id ?? '';
+    this.primaryLineIds = selectPrimaryVoiceLines(this.lines).map((line) => line.id);
+    this.showAllLines = false;
+    this.selectedLineId = this.primaryLineIds[0] ?? this.lines[0]?.id ?? '';
     this.confirmed = false;
     this.reviewAccepted = !score.requiresReview;
     this.ignoredEvents.clear();
     this.lineOctaveShifts.clear();
     this.statusKind = this.lines.length > 0 ? 'ready' : 'error';
-    this.statusMessage = this.lines.length > 0 ? `${this.lines.length} VOICE LINE${this.lines.length === 1 ? '' : 'S'} READY FOR REVIEW` : 'NO MONOPHONIC VOICE LINE FOUND';
+    this.statusMessage = this.lines.length > this.primaryLineIds.length
+      ? `${this.primaryLineIds.length} PRIMARY SATB LINES READY · ${this.lines.length - this.primaryLineIds.length} EXTRA CANDIDATES HIDDEN`
+      : this.lines.length > 0
+        ? `${this.lines.length} VOICE LINE${this.lines.length === 1 ? '' : 'S'} READY FOR REVIEW`
+        : 'NO MONOPHONIC VOICE LINE FOUND';
     this.render();
   }
 
   private showImportError(error: unknown): void {
+    this.stopGame();
     this.score = null;
     this.lines = [];
+    this.primaryLineIds = [];
+    this.showAllLines = false;
     this.selectedLineId = '';
     this.statusKind = 'error';
     this.statusMessage = error instanceof Error ? error.message : 'The score could not be recognized.';
@@ -378,9 +424,12 @@ export class ScoreWorkspace {
       if (now === null) throw new Error('Microphone audio clock is not available.');
       const tempoScale = Number(this.root.querySelector<HTMLSelectElement>('#score-tempo-scale')?.value ?? 1);
       const countInBeats = Number(this.root.querySelector<HTMLSelectElement>('#score-count-in')?.value ?? 2);
+      this.playbackTempoScale = tempoScale;
+      this.playbackCountInBeats = countInBeats;
       this.loopEnabled = this.root.querySelector<HTMLInputElement>('#score-loop')?.checked ?? false;
       this.game = new ScoreGameEngine(events, this.score?.tempoMap ?? [{ beat: 0, bpm: 120, measure: 1 }], { tempoScale, countInBeats });
       this.game.start(now);
+      this.startScorePlayback(now);
       this.root.querySelector<HTMLButtonElement>('#score-game-pause')?.removeAttribute('disabled');
       this.root.querySelector<HTMLButtonElement>('#score-game-restart')?.removeAttribute('disabled');
       this.startAnimation();
@@ -396,9 +445,11 @@ export class ScoreWorkspace {
     const snapshot = this.game.snapshot(now);
     if (snapshot.phase === 'paused') {
       this.game.resume(now);
+      this.startScorePlayback(now, snapshot.beat);
       this.startAnimation();
     } else {
       this.game.pause(now);
+      this.accompaniment?.stop();
       this.stopAnimation();
       this.updateGameUi(this.game.snapshot(now));
     }
@@ -412,6 +463,7 @@ export class ScoreWorkspace {
     const now = this.audio.nowSeconds();
     if (now === null) return;
     this.game.restart(now);
+    this.startScorePlayback(now);
     this.startAnimation();
   }
 
@@ -419,11 +471,14 @@ export class ScoreWorkspace {
     if (!this.game) return;
     const now = this.audio.nowSeconds();
     if (now !== null) this.game.pause(now);
+    this.accompaniment?.stop();
     this.stopAnimation();
   }
 
   private stopGame(): void {
     this.game = null;
+    this.accompaniment?.stop();
+    this.accompaniment = null;
     this.stopAnimation();
   }
 
@@ -435,7 +490,12 @@ export class ScoreWorkspace {
       if (now === null) return;
       const snapshot = this.game.snapshot(now);
       this.updateGameUi(snapshot);
-      if (snapshot.phase === 'finished' && this.loopEnabled) this.game.restart(now);
+      if (snapshot.phase === 'finished' && this.loopEnabled) {
+        this.game.restart(now);
+        this.startScorePlayback(now);
+      } else if (snapshot.phase === 'finished') {
+        this.accompaniment?.stop();
+      }
       if (snapshot.phase !== 'finished' || this.loopEnabled) this.animationFrame = requestAnimationFrame(draw);
     };
     this.animationFrame = requestAnimationFrame(draw);
@@ -477,7 +537,40 @@ export class ScoreWorkspace {
     return this.lines.find((line) => line.id === this.selectedLineId) ?? null;
   }
 
+  private visibleLines(): VoiceLine[] {
+    if (this.showAllLines) return this.lines;
+    const primaryIds = new Set(this.primaryLineIds);
+    return this.lines.filter((line) => primaryIds.has(line.id)).sort((a, b) => this.primaryLineIds.indexOf(a.id) - this.primaryLineIds.indexOf(b.id));
+  }
+
+  private startScorePlayback(now: number, fromBeat?: number): void {
+    const context = this.audio.context();
+    const score = this.score;
+    const selected = this.selectedLine();
+    if (!context || !score || !selected) return;
+    const plan = buildScorePlaybackPlan(score, selected, this.ignoredEvents, this.playbackTempoScale);
+    this.accompaniment?.stop();
+    this.accompaniment = new ScoreAccompaniment(plan, { guide: this.guideLevel, backing: this.backingLevel });
+    const firstTempo = score.tempoMap.find((tempo) => tempo.beat === 0)?.bpm ?? score.tempoMap[0]?.bpm ?? 120;
+    const countInSeconds = this.playbackCountInBeats * 60 / (firstTempo * this.playbackTempoScale);
+    let scoreOriginTime = now + countInSeconds;
+    let minimumScoreSeconds = 0;
+    if (fromBeat !== undefined) {
+      if (fromBeat < 0) {
+        scoreOriginTime = now + -fromBeat * 60 / (firstTempo * this.playbackTempoScale);
+      } else {
+        minimumScoreSeconds = scoreSecondsAtBeat(fromBeat, score.tempoMap, this.playbackTempoScale);
+        scoreOriginTime = now - minimumScoreSeconds;
+      }
+    }
+    this.accompaniment.start(context, scoreOriginTime, minimumScoreSeconds);
+    const guideCount = plan.filter((note) => note.kind === 'guide').length;
+    const backingCount = plan.length - guideCount;
+    this.setText('score-audio-state', `${selected.suggestedRole} GUIDE · ${backingCount} BACKING`);
+  }
+
   private invalidateConfirmation(): void {
+    this.stopGame();
     this.confirmed = false;
     if (this.score?.requiresReview) this.reviewAccepted = false;
   }

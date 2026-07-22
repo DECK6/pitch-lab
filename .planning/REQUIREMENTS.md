@@ -54,6 +54,7 @@
 - [x] **SCR-03**: Unsupported or ambiguous jumps and polyphonic target moments are visible warnings, never silent guesses.
 - [ ] **GAME-01**: User can count in, change tempo, loop measures, and follow a score cursor and game lane driven by the Web Audio clock.
 - [ ] **GAME-02**: User receives latency-compensated per-note pitch, onset, sustain, and phrase feedback from the existing monophonic detector.
+- [x] **GAME-03**: User hears the selected score line as a prominent local synth guide while the other written score parts play as softer accompaniment on the same Web Audio clock.
 - [x] **CHOIR-01**: User can directly choose separately encoded S/A/T/B parts.
 - [ ] **CHOIR-02**: User can inspect and correct staff/voice-based SATB suggestions with confidence and range/lyric previews.
 - [ ] **PDF-01**: User can opt in to printed PDF/image OMR, review/correct the MusicXML result, and only then start grading.
@@ -83,10 +84,10 @@
 | REL-03 | Phase 1 | Pending physical-device matrix |
 | MOD-01, MOD-02, KEY-01, HAR-01, HAR-02, HAR-03 | Phase 2 / Product P1 | Implemented; physical release gate pending |
 | AUD-01, PRA-01, UI2-01, WGT-01 | Phase 2 / Product P1 | Implemented; physical release gate pending |
-| SCR-01, SCR-02, SCR-03, GAME-01, GAME-02 | Phase 3 / Product P2 | Planned |
+| SCR-01, SCR-02, SCR-03, GAME-01, GAME-02, GAME-03 | Phase 3 / Product P2 | Preview implemented; full release gates pending |
 | CHOIR-01, CHOIR-02, PDF-01, PRIV-02, WGT-02, REL2-01 | Phase 3 / Product P2 | Planned |
 
-**Coverage:** all V1 and V2 requirements are mapped; P1 is implemented on `feature/pitch-lab-v2`, while P2 remains planned.
+**Coverage:** all V1 and V2 requirements are mapped; P1 is implemented and the bounded P2 score/choir/guide preview is active on `feature/pitch-lab-v2`, while the remaining P2 release gates stay open.
 
 ---
-*Last updated: 2026-07-20 for the V2 P1/P2 plan*
+*Last updated: 2026-07-22 for the V2 P2 guide/accompaniment preview*
