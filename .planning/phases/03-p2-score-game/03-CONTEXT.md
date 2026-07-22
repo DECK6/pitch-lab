@@ -6,17 +6,17 @@ Import a structured or OMR-converted score, normalize it into a renderer-indepen
 
 <decisions>
 - D-301: MusicXML/XML/MXL is the canonical semantic input and stays local to the browser.
-- D-302: PDF/image import is an optional OMR conversion path; raw OMR output must pass a correction/confirmation gate before grading.
+- D-302: The V2 preview recognizes printed PDF pages locally with PDF.js plus a bounded raster heuristic; its output must pass a correction/confirmation gate before grading.
 - D-303: The canonical `ScoreDocument` cannot expose OpenSheetMusicDisplay or another renderer's internal classes.
-- D-304: OpenSheetMusicDisplay is the leading lazy renderer candidate; pin only after a bundle/cursor/part-hiding spike.
+- D-304: The first preview uses a renderer-independent rhythm lane and local PDF page preview. A full notation renderer remains a later measured decision.
 - D-305: The Web Audio `AudioContext.currentTime` clock drives scheduling and grading; animation frames only draw.
-- D-306: P2 handles key and tempo changes, pickup measures, ties, tuplets, forward/back repeats, and first/second endings.
-- D-307: Ambiguous D.S./D.C./Coda and unsupported constructs are import warnings, never silently flattened.
+- D-306: The preview handles key/tempo maps, pickup duration, ties, voices/staves, transpose, and lyrics. Repeats/endings and jump navigation require explicit review because playback expansion is not implemented yet.
+- D-307: Repeats/endings and D.S./D.C./Coda constructs become blocking import warnings, never silent guesses.
 - D-308: Choir extraction uses part names and MusicXML part/staff/voice structure first. Vocal range is only a suggestion hint.
 - D-309: Medium- and low-confidence choir mappings require user confirmation; ambiguous simultaneous pitches are ungradable until resolved.
-- D-310: The PDF OMR path receives score files only, never microphone PCM, and deletes temporary files under a documented TTL.
+- D-310: The PDF OMR path receives score bytes only inside the current browser session, never microphone PCM, and creates no server-side temporary files.
 - D-311: Handwritten OMR and polyphonic microphone recognition are outside P2.
-- D-312: SCORE and OMR graphs are absent from initial TUNING and PRACTICE loads.
+- D-312: SCORE is loaded only when its tab opens; MusicXML and PDF/OMR graphs load only after the corresponding explicit file action.
 </decisions>
 
 <canonical_refs>
@@ -36,6 +36,6 @@ No handwritten OMR, general notation editor, polyphonic microphone grading, acco
 
 <release_defaults>
 - Lazy SCORE graph provisional hard cap: 2.5 MB raw / 800 KB Brotli.
-- MusicXML/MXL remains local; PDF/image needs explicit score-only upload disclosure.
-- P2 PDF production remains feature-disabled until accuracy, deletion, privacy, and license gates pass.
+- MusicXML/MXL and PDF remain local; PDF.js/OMR is an explicit lazy graph with a mandatory review gate.
+- Printed PDF support is experimental and limited to clean common five-line notation; handwritten and complex engraving remain outside the preview.
 </release_defaults>

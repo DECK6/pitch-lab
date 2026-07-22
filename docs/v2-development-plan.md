@@ -158,6 +158,8 @@ P1 does not add a production dependency. The theory surface is small enough to i
 
 ## P2 — Score-guided rhythm game + choir parts
 
+> **V2 preview status (2026-07-22):** The implemented first slice keeps all score bytes local. MusicXML/MXL provides structured parts and timing; printed PDF uses a lazy PDF.js raster pass with lightweight five-line staff/notehead detection. The UI requires line selection, note review/correction, and an explicit PDF confirmation before grading. The preview intentionally does not yet expand repeats/endings or D.S./D.C./Coda, engrave full notation, recognize handwritten scores, or claim production-grade PDF OMR accuracy. Those constructs surface as review warnings instead of silent playback guesses.
+
 ### Key decision: structured score first, PDF through OMR second
 
 MusicXML/MXL contains parts, voices, staves, notes, rests, key signatures, tempo, and repeat instructions. PDF only describes rendered pages; it does not reliably contain those musical relationships. Therefore P2 uses one canonical pipeline:
@@ -213,25 +215,25 @@ The part selector previews:
 - associated lyric line;
 - measures with chords or overlapping simultaneous pitches that cannot be graded monophonically.
 
-### P2C — PDF/image import
+### P2C — PDF import
 
-- PDF/image OMR is a separately deployed optional service or local converter, never part of the initial web bundle.
-- The browser explicitly discloses that the score file, but never microphone audio, will be sent for conversion.
-- The service accepts one job, uses an isolated temporary directory, returns MusicXML/MXL, and deletes input/output after completion or a short TTL.
-- Audiveris is the first candidate because it outputs MusicXML and includes an interactive-correction workflow. Its AGPLv3 obligations and deployment model require a license review before production use.
-- Printed common Western notation is the supported target. Handwritten scores are rejected with a clear message.
-- P2 is not considered complete until the correction gate, file deletion evidence, failure recovery, and representative SATB PDF fixtures pass.
+- PDF recognition is an explicit, lazy, local browser path. PDF.js and its worker are absent until the singer selects a PDF.
+- No score page or microphone PCM is uploaded. Pages are rendered to temporary in-memory canvases in the active tab.
+- The current heuristic finds five-line staves, barlines, and filled noteheads in clean printed pages, then offers 1/2/4-staff regrouping and per-note pitch/onset/duration correction.
+- Every PDF result is low confidence and blocks the game until the singer acknowledges the review. MusicXML/MXL remains the accurate input recommendation.
+- Printed common Western notation is the target. Handwritten scores, photos, accidentals, clef inference beyond the fixed choir layouts, complex beaming, and arbitrary symbols are not claimed as reliable.
+- A future Audiveris service remains an optional accuracy upgrade only after privacy, deletion, operating-cost, and AGPL deployment review; it is not used by this preview.
 
 ### P2 architecture
 
 ```text
 File picker
     │
-    ├─ XML/MXL ─► ImportWorker ─┐
+    ├─ XML/MXL ─► local parser ─┐
     │                           │
-    └─ PDF/image ─► OMR API ────┤
+    └─ PDF ─► PDF.js raster OMR ┤
                                 ▼
-                      MusicXmlValidator
+                    common ScoreDocument
                                 │
                                 ▼
                       ScoreNormalizer
@@ -250,13 +252,11 @@ AudioSession ─► PitchFrame ─► LatencyCompensator ─► NoteScorer
 
 ### P2 renderer and weight policy
 
-- Use OpenSheetMusicDisplay as the leading renderer candidate because it accepts MusicXML in a browser, exposes a cursor, and can hide parts. Pin the exact version after a one-day spike.
-- Keep the renderer behind `import()` and load it only after SCORE mode or a score file is selected.
-- Keep the canonical timeline parser independent of renderer internals. The game must remain testable if the renderer is upgraded or replaced.
-- Use a small direct ZIP decoder for `.mxl`; do not depend on a renderer's transitive package API.
-- Provisional lazy SCORE graph hard cap: 2.5 MB raw / 800 KB Brotli, including renderer, music font assets, and MXL decoder.
-- Verovio remains a measured fallback only if OSMD fails part hiding, cursor, or rendering correctness; its current npm package is materially larger and should not be bundled speculatively.
-- No client-side OMR model is bundled in P2. PDF conversion stays a separate deployment graph.
+- The preview draws its own pitch/rhythm lane and uses the recognized PDF page only as a review image; it does not bundle a full engraving renderer.
+- Keep canonical timeline data independent of pixels so a later OpenSheetMusicDisplay or Verovio decision cannot change grading semantics.
+- Use direct, pinned XML and ZIP dependencies for `.musicxml`/`.mxl` and lazy-load them only after a structured-score action.
+- Keep four measured graphs: initial, SCORE, PDF OMR, and Neural. Current caps are enforced by `scripts/check-bundle-budget.mjs`.
+- PDF.js is the only large PDF dependency and loads only after PDF selection. No client-side neural OMR model is bundled.
 
 ### P2 delivery waves
 

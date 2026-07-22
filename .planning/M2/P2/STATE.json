@@ -2,15 +2,15 @@
   "schema_version": 1,
   "milestone": "M2",
   "phase": "P2",
-  "gate": "implementation_blocked_on_p1",
-  "status": "planned",
+  "gate": "v2_preview_verification",
+  "status": "in_progress",
   "owner_runtime": "codex",
   "acceptance_criteria": [
     "MusicXML/XML/MXL import remains local and normalizes to a renderer-independent score model",
     "The score game uses the Web Audio clock and handles key changes, pickup, ties, and simple repeats",
     "Direct and condensed choir parts expose confidence and manual mapping before grading",
-    "PDF/image OMR requires explicit score-only upload and correction confirmation",
-    "Temporary OMR files are deleted under tested success, failure, cancellation, and restart paths",
+    "PDF recognition stays local, loads only after explicit selection, and requires correction confirmation",
+    "PDF recognition creates no server upload or persisted microphone/score payload",
     "Score and OMR assets are absent from initial TUNING and PRACTICE graphs",
     "Physical iPhone, Android, and desktop score-game checks are recorded before cutover"
   ],
@@ -25,7 +25,17 @@
       "type": "artifact",
       "path": ".planning/phases/03-p2-score-game/03-01-PLAN.md",
       "result": "P2 execution plan authored"
+    },
+    {
+      "type": "implementation",
+      "path": "src/ui/score/score-workspace.ts",
+      "result": "local score import, choir mapping, correction gate, and audio-clock voice run implemented"
+    },
+    {
+      "type": "test",
+      "path": "tests/browser/app.spec.ts",
+      "result": "MusicXML and printed PDF preview flows pass desktop Chromium browser checks"
     }
   ],
-  "updated_at": "2026-07-20T05:05:27Z"
+  "updated_at": "2026-07-22T13:34:47Z"
 }
