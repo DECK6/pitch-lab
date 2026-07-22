@@ -13,7 +13,7 @@ See `.planning/PROJECT.md` and `docs/product-spec.md`.
 - State: Local MusicXML/MXL, experimental printed-PDF review, primary SATB selection, selected-line guide + score backing synth, and audio-clock rhythm lane implemented for the V2-only route; full P2 and physical-device release gates remain pending
 - Plan: `.planning/phases/02-p1-practice-harmony/02-01-PLAN.md`
 - Next plan: `.planning/phases/03-p2-score-game/03-01-PLAN.md`
-- Last activity: 2026-07-22 — P2 preview gained primary SATB filtering plus local guide/backing synth; V2 redeployment pending, with `https://dexa.art/pitchlab/` retained unchanged
+- Last activity: 2026-07-22 — P2 preview gained primary SATB filtering plus local guide/backing synth and was redeployed to `https://dexa.art/pitch-lab-v2/` at adxdeck `52d76fc`; `https://dexa.art/pitchlab/` retained its prior production asset
 
 ## Known Release Gates
 
