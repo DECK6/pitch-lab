@@ -1,0 +1,14 @@
+export const DEMO_SCORE_XML = `<?xml version="1.0" encoding="UTF-8"?>
+<score-partwise version="4.0">
+  <work><work-title>PITCH/LAB CHOIR DEMO</work-title></work>
+  <part-list>
+    <score-part id="S"><part-name>Soprano</part-name></score-part>
+    <score-part id="A"><part-name>Alto</part-name></score-part>
+    <score-part id="T"><part-name>Tenor</part-name></score-part>
+    <score-part id="B"><part-name>Bass</part-name></score-part>
+  </part-list>
+  <part id="S"><measure number="1"><attributes><divisions>1</divisions><key><fifths>0</fifths><mode>major</mode></key><time><beats>4</beats><beat-type>4</beat-type></time></attributes><direction><sound tempo="92"/></direction><note><pitch><step>C</step><octave>5</octave></pitch><duration>1</duration><voice>1</voice></note><note><pitch><step>D</step><octave>5</octave></pitch><duration>1</duration><voice>1</voice></note><note><pitch><step>E</step><octave>5</octave></pitch><duration>1</duration><voice>1</voice></note><note><pitch><step>G</step><octave>5</octave></pitch><duration>1</duration><voice>1</voice></note></measure><measure number="2"><note><pitch><step>F</step><octave>5</octave></pitch><duration>2</duration><voice>1</voice></note><note><pitch><step>E</step><octave>5</octave></pitch><duration>2</duration><voice>1</voice></note></measure></part>
+  <part id="A"><measure number="1"><attributes><divisions>1</divisions></attributes><note><pitch><step>G</step><octave>4</octave></pitch><duration>2</duration><voice>1</voice></note><note><pitch><step>B</step><octave>4</octave></pitch><duration>2</duration><voice>1</voice></note></measure><measure number="2"><note><pitch><step>A</step><octave>4</octave></pitch><duration>2</duration><voice>1</voice></note><note><pitch><step>G</step><octave>4</octave></pitch><duration>2</duration><voice>1</voice></note></measure></part>
+  <part id="T"><measure number="1"><attributes><divisions>1</divisions><transpose><chromatic>-12</chromatic></transpose></attributes><note><pitch><step>E</step><octave>4</octave></pitch><duration>2</duration><voice>1</voice></note><note><pitch><step>G</step><octave>4</octave></pitch><duration>2</duration><voice>1</voice></note></measure><measure number="2"><note><pitch><step>F</step><octave>4</octave></pitch><duration>2</duration><voice>1</voice></note><note><pitch><step>E</step><octave>4</octave></pitch><duration>2</duration><voice>1</voice></note></measure></part>
+  <part id="B"><measure number="1"><attributes><divisions>1</divisions></attributes><note><pitch><step>C</step><octave>3</octave></pitch><duration>2</duration><voice>1</voice></note><note><pitch><step>G</step><octave>3</octave></pitch><duration>2</duration><voice>1</voice></note></measure><measure number="2"><note><pitch><step>F</step><octave>3</octave></pitch><duration>2</duration><voice>1</voice></note><note><pitch><step>C</step><octave>3</octave></pitch><duration>2</duration><voice>1</voice></note></measure></part>
+</score-partwise>`;

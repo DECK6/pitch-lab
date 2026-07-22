@@ -20,7 +20,10 @@
     "verify": "npm run test && npm run build && npm run budget"
   },
   "dependencies": {
+    "fast-xml-parser": "^5.10.1",
+    "fflate": "^0.8.3",
     "onnxruntime-web": "1.27.0",
+    "pdfjs-dist": "^6.1.200",
     "pitchy": "4.1.0"
   },
   "devDependencies": {
