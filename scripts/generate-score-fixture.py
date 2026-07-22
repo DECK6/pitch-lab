@@ -30,7 +30,7 @@ def draw_staff(page: canvas.Canvas, label: str, bottom: float, steps: list[int])
 
 def main() -> None:
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
-    page = canvas.Canvas(str(OUTPUT), pagesize=letter, pageCompression=1)
+    page = canvas.Canvas(str(OUTPUT), pagesize=letter, pageCompression=1, invariant=1)
     page.setTitle("Pitch Lab SATB printed fixture")
     page.setFont("Helvetica-Bold", 16)
     page.drawString(78, 748, "PITCH LAB / PRINTED SATB FIXTURE")

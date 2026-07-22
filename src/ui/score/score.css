@@ -70,7 +70,7 @@
 .score-game-controls { display: grid; grid-template-columns: repeat(3, minmax(120px, 0.55fr)) repeat(3, minmax(130px, 1fr)); gap: 7px; padding: 14px; }
 .score-game-controls label { min-height: 52px; display: flex; flex-direction: column; justify-content: center; gap: 5px; padding: 7px; border: 1px solid #99968b; background: #d8d4c8; }
 .score-game-controls select { border: 0; border-bottom: 2px solid var(--line); background: transparent; font: inherit; font-weight: 900; }
-.score-loop-toggle { flex-direction: row !important; align-items: center; cursor: pointer; }
+.score-game-controls label.score-loop-toggle { flex-direction: row; align-items: center; cursor: pointer; }
 .score-loop-toggle input { width: 20px; height: 20px; accent-color: var(--orange); }
 .score-game-controls button { min-height: 52px; border: 1.5px solid var(--line); border-radius: 4px; background: var(--orange); box-shadow: 0 3px 0 var(--line); font: inherit; font-size: 0.64rem; font-weight: 900; cursor: pointer; }
 .score-game-controls button:disabled { background: #c6c3b9; color: #77766f; box-shadow: none; cursor: not-allowed; }
